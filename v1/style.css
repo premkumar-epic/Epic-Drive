@@ -1,0 +1,948 @@
+/* General Body and Layout */
+body {
+  font-family: "Inter", Arial, sans-serif; /* Prefer Inter, fallback to Arial */
+  margin: 0;
+  padding: 0;
+  background-color: #f4f7f6;
+  color: #333;
+  line-height: 1.6;
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+}
+
+header {
+  background-color: #0d1a26; /* Dark Navy Blue */
+  color: #ecf0f1; /* Light grey */
+  padding: 15px 20px;
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  position: relative; /* For positioning account popup */
+  z-index: 1001; /* Ensure header is above other content */
+}
+
+.header-content {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  width: 100%;
+  max-width: 1200px; /* Limit header width for larger screens */
+  margin: 0 auto;
+  flex-wrap: wrap; /* Allow wrapping on smaller screens */
+  gap: 15px; /* Space between header elements */
+}
+
+.app-title {
+  display: flex;
+  align-items: baseline; /* Align h1 and span on the baseline */
+  flex-grow: 1; /* Allow title to take available space */
+}
+
+.app-title h1 {
+  margin: 0;
+  font-size: 2.8em; /* Bigger font for Epic-Drive */
+  line-height: 1;
+}
+
+.by-epic {
+  font-size: 0.9em; /* Smaller font for by EPIC */
+  color: #bdc3c7;
+  line-height: 1;
+  margin-left: 10px; /* Space between Epic-Drive and by EPIC */
+}
+
+.epic-link {
+  color: #3498db; /* Blue for the hyperlink */
+  text-decoration: none;
+  font-weight: bold;
+  transition: color 0.2s ease;
+}
+
+.epic-link:hover {
+  color: #2980b9;
+  text-decoration: underline;
+}
+
+/* Header Right Controls (Breadcrumbs, New Folder, Account) */
+.header-right-controls {
+  display: flex;
+  align-items: center;
+  gap: 15px; /* Space between breadcrumbs, new folder, and account */
+  flex-wrap: wrap; /* Allow wrapping */
+  justify-content: flex-end; /* Push items to the right */
+}
+
+/* Path Breadcrumbs */
+.path-breadcrumbs {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  background-color: #2c3e50; /* Darker background for breadcrumbs */
+  padding: 8px 15px;
+  border-radius: 5px;
+  font-size: 0.9em;
+  color: #ecf0f1;
+  max-width: 400px; /* Limit width */
+  overflow: hidden; /* Hide overflow for long paths */
+  text-overflow: ellipsis; /* Add ellipsis for long paths */
+  white-space: nowrap; /* Prevent wrapping by default */
+}
+
+.crumb {
+  cursor: pointer;
+  color: #95a5a6; /* Greyish color for inactive crumbs */
+  transition: color 0.2s ease;
+  display: flex; /* For arrow */
+  align-items: center;
+}
+
+.crumb:hover {
+  color: #3498db; /* Blue on hover */
+  text-decoration: underline;
+}
+
+.crumb:not(:first-child)::before {
+  content: " / ";
+  color: #7f8c8d; /* Separator color */
+  margin: 0 5px;
+  white-space: pre; /* Ensure space around separator */
+}
+
+.crumb.active {
+  font-weight: bold;
+  color: #ecf0f1; /* White for active crumb */
+}
+
+/* New Folder Button in Header */
+.new-folder-button {
+  background-color: #27ae60; /* Green */
+  color: white;
+  padding: 8px 15px;
+  font-size: 0.9em;
+  height: 40px; /* Match height of other buttons */
+}
+
+.new-folder-button:hover {
+  background-color: #229a56;
+}
+.new-folder-button i {
+  margin-right: 5px;
+}
+
+/* Account Menu Styles */
+.account-menu {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.account-icon-button {
+  background: none;
+  border: none;
+  padding: 0;
+  font-size: 2.5em; /* Larger icon */
+  color: #ecf0f1; /* Light grey icon color */
+  cursor: pointer;
+  transition: color 0.2s ease, transform 0.2s ease;
+  border-radius: 50%; /* Make it circular */
+  width: 50px; /* Fixed size for circular button */
+  height: 50px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  outline: none; /* Remove outline on focus */
+}
+
+.account-icon-button:hover {
+  color: #3498db; /* Blue on hover */
+  transform: scale(1.05);
+}
+
+.account-icon-button:active {
+  transform: scale(0.95);
+}
+
+.account-popup {
+  position: absolute;
+  top: calc(100% + 10px); /* Position below the button */
+  right: 0;
+  background-color: #ffffff;
+  border: 1px solid #e0e0e0;
+  border-radius: 8px;
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+  padding: 15px;
+  min-width: 200px;
+  z-index: 1000; /* Below header, above toasts */
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.account-popup p {
+  margin: 0;
+  color: #34495e;
+  font-weight: bold;
+}
+
+/* Disconnect Button inside popup */
+.disconnect-button {
+  background-color: #e74c3c; /* Red color for disconnect */
+  color: white;
+  padding: 8px 15px;
+  border-radius: 5px;
+  font-size: 0.9em;
+  width: 100%; /* Full width inside popup */
+  box-shadow: none; /* No shadow for smaller button */
+  margin-right: 0; /* Override default button margin */
+}
+
+.disconnect-button:hover {
+  background-color: #c0392b; /* Darker red on hover */
+  transform: translateY(-1px);
+}
+
+main {
+  flex-grow: 1;
+  padding: 20px;
+  max-width: 1000px; /* Increased max width for more content */
+  margin: 20px auto;
+  background-color: #ffffff;
+  border-radius: 10px;
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+}
+
+section {
+  margin-bottom: 30px;
+  padding: 20px;
+  border: 1px solid #e0e0e0;
+  border-radius: 8px;
+  background-color: #fdfdfd;
+}
+
+h2 {
+  color: #34495e; /* Darker blue-grey */
+  margin-top: 0;
+  margin-bottom: 20px;
+  display: flex;
+  align-items: center;
+  gap: 10px; /* Space between title and sync indicator */
+}
+
+.input-group {
+  margin-bottom: 15px;
+}
+
+.input-group label {
+  display: block;
+  margin-bottom: 5px;
+  font-weight: bold;
+  color: #555;
+}
+
+/* Base style for all input text fields, ensuring consistent height */
+input[type="text"],
+input[type="password"] {
+  width: calc(100% - 22px); /* Full width minus padding and border */
+  padding: 10px;
+  border: 1px solid #ccc;
+  border-radius: 5px;
+  font-size: 1em;
+  box-sizing: border-box; /* Include padding in width */
+  height: 40px; /* Fixed height for consistency */
+  line-height: 1.5; /* Align text vertically */
+}
+
+/* Buttons general style */
+button.action-button {
+  background-color: #3498db; /* Blue */
+  color: white;
+  padding: 10px 20px;
+  border: none;
+  border-radius: 5px;
+  cursor: pointer;
+  font-size: 1em;
+  transition: background-color 0.3s ease, transform 0.2s ease;
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+  margin-right: 10px; /* Space between buttons */
+  height: 40px; /* Ensure buttons match input height */
+  display: inline-flex; /* Use flex for icon alignment */
+  align-items: center; /* Center content vertically */
+  justify-content: center; /* Center content horizontally */
+  white-space: nowrap; /* Prevent text wrapping */
+}
+
+button.action-button:hover {
+  background-color: #2980b9; /* Darker blue on hover */
+  transform: translateY(-1px);
+}
+
+button.action-button:active {
+  transform: translateY(0);
+  box-shadow: none;
+}
+
+button.action-button:disabled {
+  background-color: #cccccc;
+  cursor: not-allowed;
+  box-shadow: none;
+}
+
+/* Specific main connect button */
+#connectButton {
+  background-color: #27ae60; /* Green for connect */
+  margin-right: 0;
+}
+#connectButton:hover {
+  background-color: #229a56;
+}
+
+.message {
+  padding: 10px;
+  border-radius: 5px;
+  margin-top: 15px;
+  font-weight: bold;
+}
+
+.message.info {
+  background-color: #e7f3fe;
+  color: #0056b3;
+  border-color: #b8daff;
+}
+
+.message.success {
+  background-color: #d4edda;
+  color: #155724;
+  border-color: #c3e6cb;
+}
+
+.message.error {
+  background-color: #f8d7da;
+  color: #721c24;
+  border-color: #f5c6cb;
+}
+
+.security-note {
+  margin-top: 20px;
+  padding: 10px;
+  background-color: #f9f9f9;
+  border: 1px solid #eee;
+  border-left: 5px solid #f39c12; /* Warning orange */
+  border-radius: 4px;
+  font-size: 0.9em;
+}
+
+.security-note a {
+  color: #3498db;
+  text-decoration: none;
+}
+
+.security-note a:hover {
+  text-decoration: underline;
+}
+
+/* File Manager Specific Styles */
+#file-manager-section {
+  padding: 0; /* Remove section padding as internal divs will handle it */
+  background-color: #fff; /* Reset background for internal dark elements */
+  border: none; /* Remove section border */
+  box-shadow: none; /* Remove section shadow */
+}
+
+.file-manager-header {
+  background-color: #2c3e50; /* Darker blue-grey background */
+  color: #ecf0f1;
+  padding: 15px 20px;
+  border-radius: 8px 8px 0 0; /* Rounded top corners */
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.file-manager-header h2 {
+  margin: 0;
+  color: #ecf0f1;
+}
+
+.file-manager-title {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+/* Sync Status Button Styling (inside file-manager-header) */
+.sync-button {
+  background: none; /* No background */
+  border: none; /* No border */
+  padding: 0; /* No padding */
+  margin: 0; /* No margin */
+  font-size: 1.5em; /* Larger icon */
+  cursor: pointer;
+  transition: transform 0.2s ease-in-out;
+  box-shadow: none; /* No shadow */
+  display: inline-flex; /* Use flex to center icon */
+  align-items: center;
+  justify-content: center;
+  width: 30px; /* Fixed size for button */
+  height: 30px;
+  border-radius: 50%; /* Make it circular */
+  vertical-align: middle; /* Align with text */
+  color: #ecf0f1; /* White icon color */
+}
+
+.sync-button:hover {
+  transform: rotate(15deg); /* Subtle rotation on hover */
+  background: rgba(255, 255, 255, 0.1); /* Light background on hover */
+}
+
+.sync-button:active {
+  transform: rotate(30deg); /* More rotation on click */
+  background: rgba(255, 255, 255, 0.2);
+}
+
+.sync-icon {
+  display: inline-block; /* Allows transform */
+  font-weight: bold;
+  transition: color 0.3s ease; /* Smooth color change */
+  line-height: 1; /* Ensure symbol is centered */
+}
+
+/* Controls Bar (Upload, Search, Filter) */
+.controls-bar {
+  background-color: #34495e; /* Darker background for controls */
+  padding: 15px 20px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 15px;
+  align-items: center;
+  justify-content: space-between; /* Space out upload and search/filter */
+}
+
+.upload-controls,
+.search-filter-controls {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  flex-wrap: wrap; /* Allow wrapping within control groups */
+  flex-grow: 1; /* Allow groups to grow */
+  min-width: 300px; /* Prevent groups from becoming too small */
+}
+
+/* Custom file input appearance */
+.hidden-input {
+  display: none; /* Hide the actual file input */
+}
+
+#chooseFilesButton {
+  background-color: #7f8c8d; /* Grey for choose files */
+  margin-right: 0;
+}
+#chooseFilesButton:hover {
+  background-color: #6c7a89;
+}
+
+.selected-file-names {
+  color: #ecf0f1; /* Light text for file names */
+  flex-grow: 1; /* Allow to take space */
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  padding: 0 5px;
+  line-height: 40px; /* Align text vertically with button height */
+  height: 40px;
+  display: flex;
+  align-items: center;
+}
+
+#uploadButton {
+  background-color: #2ecc71; /* Green for upload */
+  margin-right: 0;
+}
+#uploadButton:hover {
+  background-color: #27ad60;
+}
+
+/* Search and Filter Controls */
+.search-input-group {
+  display: flex;
+  gap: 5px;
+  flex-grow: 1;
+}
+
+.search-input-group input[type="text"] {
+  background-color: #ecf0f1; /* Light background for search input */
+  color: #333;
+  border: 1px solid #bdc3c7;
+  flex-grow: 1;
+  width: auto; /* Override general 100% width */
+  height: 40px; /* Ensure consistent height */
+  padding: 10px;
+  box-sizing: border-box;
+}
+
+.search-button,
+.filter-button {
+  padding: 0 15px; /* Adjust padding for icon buttons */
+  width: 40px; /* Fixed width for square button */
+  height: 40px; /* Fixed height for square button */
+  font-size: 1.1em; /* Larger icon */
+  margin-right: 0; /* Remove default margin */
+  background-color: #3498db; /* Blue for search/filter */
+}
+.search-button i,
+.filter-button i {
+  margin-right: 0; /* Remove margin for icons in square buttons */
+}
+.filter-button {
+  width: auto; /* Allow filter button to expand with text */
+  padding: 10px 15px;
+}
+.filter-button i {
+  margin-right: 5px;
+}
+
+#file-list {
+  border: 1px solid #e0e0e0;
+  border-radius: 0 0 8px 8px; /* Rounded bottom corners */
+  padding: 15px;
+  min-height: 200px;
+  background-color: #fdfdfd;
+}
+
+/* File List Navigation Header (contains back button) */
+.file-list-nav-header {
+  display: flex;
+  justify-content: flex-start; /* Align back button to start */
+  margin-bottom: 15px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid #eee;
+}
+
+.file-list-nav-header .back-button {
+  margin-right: 0; /* Remove default button margin */
+  background-color: #7f8c8d; /* Grey for back button */
+}
+.file-list-nav-header .back-button:hover {
+  background-color: #6c7a89;
+}
+
+.file-list-items {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.file-item {
+  display: flex;
+  align-items: center;
+  padding: 10px 0;
+  border-bottom: 1px solid #eee;
+  transition: background-color 0.2s ease;
+}
+
+.file-item:last-child {
+  border-bottom: none;
+}
+
+.file-item:hover {
+  background-color: #f9f9f9;
+}
+
+.file-icon {
+  font-size: 1.2em;
+  margin-right: 10px;
+  width: 20px; /* Fixed width for icons */
+  text-align: center;
+}
+
+.folder-icon {
+  color: #f39c12; /* Orange for folders */
+}
+
+.file-name {
+  flex-grow: 1;
+  font-weight: bold;
+  color: #34495e;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  padding-right: 10px; /* Space before size/date */
+}
+
+.file-size,
+.file-date {
+  font-size: 0.9em;
+  color: #7f8c8d;
+  white-space: nowrap;
+  margin-left: 10px;
+}
+
+.file-actions {
+  display: flex;
+  gap: 5px;
+  margin-left: auto; /* Push actions to the right */
+}
+
+.file-actions .action-button {
+  padding: 5px 10px;
+  font-size: 0.8em;
+  border-radius: 4px;
+  box-shadow: none; /* Remove shadow for smaller buttons */
+  height: auto; /* Allow smaller buttons to size naturally */
+}
+
+.file-actions .action-button.download-file {
+  background-color: #3498db;
+}
+.file-actions .action-button.delete-file,
+.file-actions .action-button.delete-folder {
+  background-color: #e74c3c;
+}
+.file-actions .action-button.share-file {
+  background-color: #9b59b6;
+}
+
+.file-actions .action-button:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+.empty-message {
+  text-align: center;
+  color: #7f8c8d;
+  padding: 20px;
+}
+
+/* Footer */
+footer {
+  text-align: center;
+  padding: 20px;
+  margin-top: 30px;
+  background-color: #ecf0f1;
+  color: #7f8c8d;
+  font-size: 0.9em;
+  box-shadow: 0 -2px 5px rgba(0, 0, 0, 0.05);
+}
+
+footer a {
+  color: #3498db;
+  text-decoration: none;
+}
+
+footer a:hover {
+  text-decoration: underline;
+}
+
+/* Toast Notification Styles */
+#toastContainer {
+  top: 80px; /* Adjusted to be below the new header */
+  right: 20px;
+  z-index: 2000;
+}
+
+.toast {
+  background-color: #333;
+  color: white;
+  padding: 10px 15px;
+  border-radius: 5px;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
+  opacity: 0;
+  transition: opacity 0.3s ease-in-out, transform 0.3s ease-in-out;
+  transform: translateY(20px);
+  min-width: 200px;
+  text-align: center;
+  animation: fadeInOut 3s forwards;
+}
+
+.toast.success {
+  background-color: #28a745;
+}
+.toast.error {
+  background-color: #dc3545;
+}
+.toast.info {
+  background-color: #17a2b8;
+}
+
+@keyframes fadeInOut {
+  0% {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  10% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+  90% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+  100% {
+    opacity: 0;
+    transform: translateY(-20px);
+  }
+}
+
+/* Modal Styles (for New Folder and Share Link) */
+.modal {
+  display: flex; /* Hidden by default, then flex for centering */
+  position: fixed; /* Stay in place */
+  z-index: 2000; /* Sit on top */
+  left: 0;
+  top: 0;
+  width: 100%; /* Full width */
+  height: 100%; /* Full height */
+  overflow: auto; /* Enable scroll if needed */
+  background-color: rgba(0, 0, 0, 0.6); /* Black w/ opacity */
+  justify-content: center; /* Center horizontally */
+  align-items: center; /* Center vertically */
+}
+
+.modal-content {
+  background-color: #fefefe;
+  padding: 25px;
+  border: 1px solid #888;
+  border-radius: 10px;
+  width: 90%;
+  max-width: 450px; /* Max width for modal */
+  box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
+  position: relative;
+  animation: fadeInScale 0.3s ease-out forwards;
+}
+
+@keyframes fadeInScale {
+  from {
+    opacity: 0;
+    transform: scale(0.9);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+.modal-content h2 {
+  margin-top: 0;
+  color: #34495e;
+  margin-bottom: 20px;
+}
+
+.modal-content input[type="text"] {
+  width: calc(100% - 20px); /* Adjust for padding within modal */
+  margin-bottom: 20px;
+}
+
+.modal-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+}
+
+.modal-actions .action-button {
+  margin-right: 0; /* Remove default margin from buttons in modal */
+  padding: 10px 20px;
+  font-size: 0.95em;
+  height: auto; /* Let content determine height */
+}
+
+.modal-actions .cancel-button {
+  background-color: #95a5a6; /* Grey for cancel */
+}
+.modal-actions .cancel-button:hover {
+  background-color: #7f8c8d;
+}
+
+.modal .close-button {
+  color: #aaa;
+  float: right;
+  font-size: 30px;
+  font-weight: bold;
+  position: absolute;
+  top: 10px;
+  right: 15px;
+  cursor: pointer;
+  transition: color 0.2s ease;
+}
+
+.modal .close-button:hover,
+.modal .close-button:focus {
+  color: #333;
+  text-decoration: none;
+}
+
+/* Share Link Modal Specifics */
+.duration-buttons-group {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 15px;
+}
+
+.duration-button {
+  background-color: #f0f0f0; /* Light grey default */
+  color: #333;
+  border: 1px solid #ccc;
+  padding: 8px 15px;
+  border-radius: 5px;
+  cursor: pointer;
+  font-size: 0.9em; /* Slightly smaller font for buttons */
+  white-space: nowrap; /* Prevent wrapping */
+  transition: all 0.2s ease; /* Smooth transitions */
+  height: auto; /* Allow duration buttons to be smaller */
+}
+
+.duration-button:hover {
+  background-color: #e0e0e0;
+  border-color: #bbb;
+}
+
+.duration-button.selected {
+  background-color: #3498db; /* Blue for selected */
+  color: white;
+  border-color: #2980b9;
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+  transform: translateY(-2px);
+}
+
+.duration-button.selected:hover {
+  background-color: #2980b9;
+  border-color: #2980b9;
+}
+
+.copy-link-button {
+  background-color: #2ecc71; /* Green for copy */
+  margin-top: 10px;
+}
+.copy-link-button:hover {
+  background-color: #27ad60;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+  header {
+    flex-direction: column;
+    align-items: flex-start;
+    padding: 15px;
+  }
+  .header-content {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 10px;
+  }
+  .app-title {
+    margin-bottom: 5px;
+  }
+  .header-right-controls {
+    width: 100%;
+    justify-content: space-between; /* Spread controls */
+    gap: 10px;
+  }
+  .path-breadcrumbs {
+    flex-grow: 1; /* Allow breadcrumbs to take space */
+    max-width: none; /* No max width on small screens */
+    white-space: normal; /* Allow wrapping of path */
+  }
+  .new-folder-button {
+    flex-shrink: 0; /* Don't shrink */
+  }
+  .account-icon-button {
+    margin-left: auto; /* Push to the far right */
+  }
+  .account-popup {
+    top: auto;
+    bottom: -10px;
+    left: 0;
+    right: auto;
+    transform: translateX(0); /* Align to left of icon, not centered */
+    margin-left: auto;
+    width: auto; /* Allow popup to size to content */
+    min-width: 150px;
+  }
+
+  main {
+    margin: 10px auto;
+    padding: 0; /* No padding on main, sections handle it */
+    box-shadow: none; /* No shadow on main */
+  }
+  section {
+    border-radius: 0; /* No border radius for sections on small screens */
+    border-left: none;
+    border-right: none;
+    padding: 15px; /* Adjust padding */
+  }
+  #connection-section {
+    border-bottom: 1px solid #e0e0e0; /* Add border for separation */
+  }
+  .file-manager-header,
+  .controls-bar {
+    border-radius: 0; /* No rounded corners on small screens */
+  }
+
+  /* Adjust controls bar for small screens */
+  .controls-bar {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 15px;
+  }
+  .upload-controls,
+  .search-filter-controls {
+    flex-direction: column;
+    align-items: stretch;
+    min-width: unset;
+    width: 100%;
+  }
+  .upload-controls button,
+  .search-filter-controls button {
+    width: 100%; /* Full width for buttons in controls bar */
+    margin-right: 0;
+  }
+  .upload-controls .selected-file-names {
+    width: 100%;
+    text-align: center;
+    margin-top: 5px; /* Space between choose files and names */
+  }
+
+  .search-input-group {
+    width: 100%;
+  }
+  .search-input-group input[type="text"] {
+    flex-grow: 1;
+  }
+  .search-button {
+    width: 40px; /* Keep icon button size */
+    flex-shrink: 0; /* Prevent shrinking */
+  }
+  .filter-button {
+    width: 100%;
+  }
+
+  .file-item {
+    flex-wrap: wrap; /* Allow items to wrap */
+  }
+  .file-name,
+  .file-size,
+  .file-date {
+    flex-basis: 100%; /* Take full width */
+    margin-left: 0;
+    padding-top: 5px;
+  }
+  .file-actions {
+    width: 100%;
+    justify-content: flex-end; /* Push buttons to right */
+    margin-top: 10px;
+  }
+
+  /* Modals adjustments */
+  .modal-content {
+    width: 95%; /* Make modal wider on small screens */
+    padding: 15px;
+  }
+  .modal-actions {
+    flex-direction: column;
+    gap: 10px;
+  }
+  .modal-actions .action-button {
+    width: 100%;
+  }
+}

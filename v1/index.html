@@ -1,0 +1,259 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Epic-Drive - S3 File Manager</title>
+    <link rel="stylesheet" href="style.css" />
+    <link
+      rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css"
+    />
+    <script src="https://sdk.amazonaws.com/js/aws-sdk-2.1692.0.min.js"></script>
+  </head>
+  <body>
+    <header>
+      <div class="header-content">
+        <div class="app-title">
+          <h1>
+            Epic-Drive
+            <span class="by-epic"
+              >by
+              <a
+                href="https://premkumar-epic.github.io/premkumar/"
+                target="_blank"
+                class="epic-link"
+                >EPIC</a
+              ></span
+            >
+          </h1>
+        </div>
+        <div class="header-right-controls">
+          <div id="pathBreadcrumbs" class="path-breadcrumbs">
+            <span class="crumb root-crumb" data-prefix="">Root</span>
+          </div>
+          <button
+            id="newFolderButton"
+            class="action-button new-folder-button"
+            title="Create New Folder"
+          >
+            <i class="fas fa-folder-plus"></i> New Folder
+          </button>
+          <button
+            id="accountIconButton"
+            class="account-icon-button"
+            title="Not Connected"
+          >
+            <i class="fas fa-user-circle"></i>
+          </button>
+          <div id="accountPopup" class="account-popup" style="display: none">
+            <p>Connected Bucket: <span id="popupBucketName">N/A</span></p>
+            <button
+              id="disconnectButton"
+              class="action-button disconnect-button"
+            >
+              Disconnect
+            </button>
+          </div>
+        </div>
+      </div>
+    </header>
+
+    <main>
+      <section id="connection-section">
+        <h2>Connect to Your S3 Bucket</h2>
+        <div class="input-group">
+          <label for="accessKeyId">AWS Access Key ID:</label>
+          <input
+            type="password"
+            id="accessKeyId"
+            placeholder="Your AWS Access Key ID"
+          />
+        </div>
+        <div class="input-group">
+          <label for="secretAccessKey">AWS Secret Access Key:</label>
+          <input
+            type="password"
+            id="secretAccessKey"
+            placeholder="Your AWS Secret Access Key"
+          />
+        </div>
+        <div class="input-group">
+          <label for="region">AWS Region (e.g., ap-south-1):</label>
+          <input type="text" id="region" placeholder="e.g., ap-south-1" />
+        </div>
+        <div class="input-group">
+          <label for="bucketName">S3 Bucket Name:</label>
+          <input
+            type="text"
+            id="bucketName"
+            placeholder="Your S3 Bucket Name"
+          />
+        </div>
+        <button id="connectButton">Connect</button>
+        <p id="statusMessage" class="message"></p>
+        <p class="security-note">
+          <small>
+            <b>Important:</b> Your AWS credentials are never sent to our
+            servers. They are stored **only in your browser's local storage**
+            and used directly to communicate with AWS S3. You are responsible
+            for the security of your AWS account. Please use
+            <a
+              href="https://docs.aws.amazon.com/IAM/latest/UserGuide/id_users_create.html"
+              target="_blank"
+              >IAM users with least privilege</a
+            >
+            and configure
+            <a
+              href="https://docs.aws.amazon.com/AmazonS3/latest/userguide/cors.html"
+              target="_blank"
+              >CORS on your S3 bucket</a
+            >.
+          </small>
+        </p>
+      </section>
+
+      <section id="file-manager-section" style="display: none">
+        <div class="file-manager-header">
+          <div class="file-manager-title">
+            <h2>Bucket Contents</h2>
+            <button
+              id="syncStatusButton"
+              class="sync-button"
+              title="Sync Status"
+            >
+              <span class="sync-icon"><i class="fas fa-sync-alt"></i></span>
+            </button>
+          </div>
+        </div>
+
+        <div class="controls-bar">
+          <div class="upload-controls">
+            <input
+              type="file"
+              id="fileUploadInput"
+              multiple
+              class="hidden-input"
+            />
+            <button id="chooseFilesButton" class="action-button">
+              Choose Files
+            </button>
+            <span id="selectedFileNames" class="selected-file-names"
+              >No file chosen</span
+            >
+            <button id="uploadButton" class="action-button upload-button">
+              Upload Files
+            </button>
+          </div>
+          <div class="search-filter-controls">
+            <div class="search-input-group">
+              <input
+                type="text"
+                id="searchFilesInput"
+                placeholder="Search files and folders..."
+              />
+              <button
+                id="searchButton"
+                class="action-button search-button"
+                title="Search"
+              >
+                <i class="fas fa-search"></i>
+              </button>
+            </div>
+            <button
+              id="filterButton"
+              class="action-button filter-button"
+              title="Filter by type"
+            >
+              <i class="fas fa-filter"></i> Filter
+            </button>
+          </div>
+        </div>
+
+        <div id="file-list">
+          <div class="file-list-nav-header">
+            <button
+              id="backButton"
+              class="action-button back-button"
+              style="display: none"
+            >
+              ← Back
+            </button>
+          </div>
+          <p class="empty-message">Loading files...</p>
+        </div>
+        <p id="fileManagerStatus" class="message"></p>
+      </section>
+    </main>
+
+    <footer>
+      <p>
+        Support this project:
+        <a href="https://buymeacoffee.com/premkumar.dev" target="_blank"
+          >Donate Here</a
+        >
+      </p>
+      <p>&copy; 2025 Epic-Drive. Made with ❤️ for the open-source community.</p>
+    </footer>
+
+    <div id="createNewFolderModal" class="modal" style="display: none">
+      <div class="modal-content">
+        <span class="close-button">&times;</span>
+        <h2>Create New Folder</h2>
+        <input
+          type="text"
+          id="newFolderNameInput"
+          placeholder="Enter folder name"
+        />
+        <div class="modal-actions">
+          <button id="createFolderConfirmButton" class="action-button">
+            Create
+          </button>
+          <button
+            id="createFolderCancelButton"
+            class="action-button cancel-button"
+          >
+            Cancel
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <div id="shareLinkModal" class="modal" style="display: none">
+      <div class="modal-content">
+        <span id="closeShareModal" class="close-button">&times;</span>
+        <h2>Shareable Link for: <span id="sharedFileName"></span></h2>
+        <p>Select link expiry duration:</p>
+        <div id="durationButtons" class="duration-buttons-group">
+          <button class="action-button duration-button" data-duration="900">
+            15 Mins
+          </button>
+          <button class="action-button duration-button" data-duration="3600">
+            1 Hour
+          </button>
+          <button class="action-button duration-button" data-duration="86400">
+            1 Day
+          </button>
+          <button class="action-button duration-button" data-duration="259200">
+            3 Days
+          </button>
+          <button class="action-button duration-button" data-duration="432000">
+            5 Days
+          </button>
+          <button
+            class="action-button duration-button selected"
+            data-duration="604800"
+          >
+            7 Days (Max)
+          </button>
+        </div>
+        <input type="text" id="generatedShareLink" value="" readonly />
+        <button id="copyShareLinkButton" class="action-button copy-link-button">
+          Copy Link
+        </button>
+      </div>
+    </div>
+
+    <script src="script.js"></script>
+  </body>
+</html>
