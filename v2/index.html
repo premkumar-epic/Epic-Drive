@@ -25,7 +25,14 @@
             <span
               class="text-sm font-normal text-gray-500"
               style="color: var(--text-secondary)"
-              >By EPIC</span
+              ><a
+                href="https://premkumar-epic.github.io/premkumar/"
+                target="_blank"
+                class="no-underline"
+                style="color: inherit"
+              >
+                By EPIC
+              </a></span
             >
           </h1>
         </div>
@@ -156,16 +163,7 @@
         <p id="fileManagerStatus" class="message text-center mb-4 hidden"></p>
 
         <div class="file-manager-header">
-          <div id="file-path-breadcrumbs" class="file-path-breadcrumbs">
-            <button
-              id="backButton"
-              class="crumb-button"
-              title="Go back to parent folder"
-              disabled
-            >
-              <i class="fas fa-arrow-left"></i><span>Back</span>
-            </button>
-          </div>
+          <div id="file-path-breadcrumbs" class="file-path-breadcrumbs"></div>
           <button
             id="syncStatusButton"
             class="sync-button"
@@ -176,7 +174,7 @@
         </div>
 
         <div
-          class="flex items-center gap-4 mb-6 flex-wrap md:flex-nowrap overflow-x-auto pb-2"
+          class="flex items-center gap-4 mb-4 flex-wrap md:flex-nowrap overflow-x-auto pb-2"
         >
           <button
             id="uploadButton"
@@ -212,14 +210,29 @@
               <i class="fas fa-search"></i>
             </button>
           </div>
+          <div>
+            <button
+              id="filterButton"
+              class="btn-secondary px-4 py-2 rounded-lg font-medium flex items-center space-x-2 transition-colors duration-200 whitespace-nowrap"
+            >
+              <i class="fas fa-filter"></i>
+              <span>Filter</span>
+              <i class="fas fa-caret-down ml-2"></i>
+            </button>
+          </div>
+        </div>
+
+        <div class="mb-4">
           <button
-            id="filterButton"
-            class="btn-secondary px-4 py-2 rounded-lg font-medium flex items-center space-x-2 transition-colors duration-200 whitespace-nowrap"
+            id="backButton"
+            class="crumb-button"
+            title="Go back to parent folder"
+            disabled
           >
-            <i class="fas fa-filter"></i>
-            <span>Filter</span>
+            <i class="fas fa-arrow-left"></i><span>Back</span>
           </button>
         </div>
+
         <div class="overflow-x-auto" id="file-list">
           <table
             class="min-w-full divide-y"
@@ -371,11 +384,95 @@
 
     <footer class="footer-bg py-4 text-center text-sm">
       <div class="container mx-auto px-4">
-        &copy; 2024 Epic-Drive. All rights reserved.
+        &copy; 2025 Epic-Drive. All rights reserved. <br />
+        Support this project:
+        <a
+          href="https://buymeacoffee.com/premkumar.dev"
+          target="_blank"
+          class="text-accent hover:underline"
+          >Buy me a Coffee</a
+        >
       </div>
     </footer>
 
     <div id="toast-container"></div>
+
+    <div
+      id="filterDropdown"
+      class="w-48 rounded-md shadow-lg dropdown-menu hidden z-[9999]"
+      style="position: absolute"
+    >
+      <div
+        class="py-1"
+        role="menu"
+        aria-orientation="vertical"
+        aria-labelledby="filterButton"
+      >
+        <button
+          class="block w-full text-left px-4 py-2 text-sm dropdown-item filter-option"
+          data-filter="all"
+          role="menuitem"
+        >
+          All Files
+        </button>
+        <button
+          class="block w-full text-left px-4 py-2 text-sm dropdown-item filter-option"
+          data-filter="folders"
+          role="menuitem"
+        >
+          Folders
+        </button>
+        <button
+          class="block w-full text-left px-4 py-2 text-sm dropdown-item filter-option"
+          data-filter="documents"
+          role="menuitem"
+        >
+          Documents
+        </button>
+        <button
+          class="block w-full text-left px-4 py-2 text-sm dropdown-item filter-option"
+          data-filter="images"
+          role="menuitem"
+        >
+          Images
+        </button>
+        <button
+          class="block w-full text-left px-4 py-2 text-sm dropdown-item filter-option"
+          data-filter="videos"
+          role="menuitem"
+        >
+          Videos
+        </button>
+        <button
+          class="block w-full text-left px-4 py-2 text-sm dropdown-item filter-option"
+          data-filter="audio"
+          role="menuitem"
+        >
+          Audio
+        </button>
+        <button
+          class="block w-full text-left px-4 py-2 text-sm dropdown-item filter-option"
+          data-filter="code"
+          role="menuitem"
+        >
+          Code
+        </button>
+        <button
+          class="block w-full text-left px-4 py-2 text-sm dropdown-item filter-option"
+          data-filter="archives"
+          role="menuitem"
+        >
+          Archives
+        </button>
+        <button
+          class="block w-full text-left px-4 py-2 text-sm dropdown-item filter-option"
+          data-filter="other"
+          role="menuitem"
+        >
+          Other
+        </button>
+      </div>
+    </div>
 
     <script src="script.js"></script>
   </body>

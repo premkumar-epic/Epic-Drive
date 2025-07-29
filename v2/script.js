@@ -28,6 +28,8 @@ const createFolderCancelButton = document.getElementById(
 const searchFilesInput = document.getElementById("searchFilesInput");
 const searchButton = document.getElementById("searchButton");
 const filterButton = document.getElementById("filterButton"); // Placeholder for future filter logic
+const filterDropdown = document.getElementById("filterDropdown"); // New: Filter dropdown
+const filterOptions = document.querySelectorAll(".filter-option"); // New: Filter options
 
 // New DOM elements for header/account menu
 const accountMenuButton = document.getElementById("account-menu-button");
@@ -42,8 +44,7 @@ const accountIconContainer = document.getElementById("account-icon-container");
 const filePathBreadcrumbs = document.getElementById("file-path-breadcrumbs");
 const syncStatusButton = document.getElementById("syncStatusButton");
 const syncStatusIcon = syncStatusButton.querySelector(".sync-icon");
-// const syncStatusText = syncStatusButton.querySelector(".sync-status-text"); // REMOVED
-const backButton = document.getElementById("backButton"); // New back button
+const backButton = document.getElementById("backButton"); // New back button, now on top of table
 
 // --- Toast Notification Container ---
 const toastContainer = document.getElementById("toast-container");
@@ -62,6 +63,7 @@ let currentBucket;
 let currentPrefix = ""; // Always ends with a '/' for folders or empty for root
 let fileKeyToShare = ""; // Stores the key of the file currently being shared
 let initialConnectionLoad = true; // Flag for initial file listing after connection
+let currentFilter = "all"; // New: Default filter setting
 
 // --- Utility Functions for UI & Status Messages ---
 
@@ -104,23 +106,25 @@ function hideStatus() {
   }
 }
 
+// Removed showFileManagerStatus and hideFileManagerStatus as per request.
+// Keeping empty for now to avoid breaking existing calls elsewhere, will remove calls.
 function showFileManagerStatus(message, type = "info") {
-  console.log(`[[File Manager Status]] ${message} [[${type}]]`);
-  if (fileManagerStatus) {
-    fileManagerStatus.textContent = message;
-    fileManagerStatus.className = `message text-sm ${
-      type === "info" ? "info" : type === "success" ? "success" : "error"
-    }`;
-    fileManagerStatus.style.display = "block";
-  }
+  // console.log(`[[File Manager Status]] ${message} [[${type}]]`);
+  // if (fileManagerStatus) {
+  //   fileManagerStatus.textContent = message;
+  //   fileManagerStatus.className = `message text-sm ${
+  //     type === "info" ? "info" : type === "success" ? "success" : "error"
+  //   }`;
+  //   fileManagerStatus.style.display = "block";
+  // }
 }
 
 function hideFileManagerStatus() {
-  if (fileManagerStatus) {
-    fileManagerStatus.textContent = "";
-    fileManagerStatus.style.display = "none";
-    fileManagerStatus.className = "message"; // Reset classes
-  }
+  // if (fileManagerStatus) {
+  //   fileManagerStatus.textContent = "";
+  //   fileManagerStatus.style.display = "none";
+  //   fileManagerStatus.className = "message"; // Reset classes
+  // }
 }
 
 function showModal(modalElement) {
@@ -282,17 +286,74 @@ async function connectToS3() {
   }
 }
 
+// Helper function to determine file type category
+function getFileTypeCategory(fileName, isFolder = false) {
+  if (isFolder) return "folders";
+  const ext = fileName.split(".").pop().toLowerCase();
+
+  // Documents
+  if (
+    [
+      "doc",
+      "docx",
+      "xls",
+      "xlsx",
+      "ppt",
+      "pptx",
+      "pdf",
+      "odt",
+      "ods",
+      "odp",
+    ].includes(ext)
+  )
+    return "documents";
+  // Images
+  if (["jpg", "jpeg", "png", "gif", "bmp", "svg", "webp", "ico"].includes(ext))
+    return "images";
+  // Videos
+  if (["mp4", "mov", "avi", "mkv", "webm", "flv", "wmv"].includes(ext))
+    return "videos";
+  // Audio
+  if (["mp3", "wav", "aac", "flac", "ogg", "wma"].includes(ext)) return "audio";
+  // Code
+  if (
+    [
+      "js",
+      "html",
+      "css",
+      "json",
+      "xml",
+      "py",
+      "java",
+      "c",
+      "cpp",
+      "h",
+      "php",
+      "rb",
+      "go",
+      "swift",
+      "ts",
+      "jsx",
+      "tsx",
+    ].includes(ext)
+  )
+    return "code";
+  // Archives
+  if (["zip", "rar", "7z", "tar", "gz", "bz2", "xz"].includes(ext))
+    return "archives";
+  // Text
+  if (["txt", "md", "csv"].includes(ext)) return "text"; // Adding text as a separate filter
+
+  return "other"; // Catch-all for anything not explicitly categorized
+}
+
 async function listFiles(prefix = "") {
   if (!s3) {
-    showFileManagerStatus("Not connected to S3.", "error");
+    // showFileManagerStatus("Not connected to S3.", "error"); // Removed as per request
     syncStatusButton.title = "Disconnected";
     return;
   }
 
-  // Show "Loading files..." message if not the initial connection load
-  if (!initialConnectionLoad) {
-    showFileManagerStatus("Loading files...", "info");
-  }
   syncStatusIcon.classList.add("fa-spin");
   syncStatusButton.title = "Syncing...";
 
@@ -309,11 +370,10 @@ async function listFiles(prefix = "") {
     // Update dynamic breadcrumbs
     filePathBreadcrumbs.innerHTML = ""; // Clear previous breadcrumbs
 
-    // Add Back button
-    backButton.disabled = prefix === ""; // Disable if at root
-    filePathBreadcrumbs.appendChild(backButton);
+    // Enable/disable back button
+    backButton.disabled = prefix === "";
 
-    // Add "Root" button with home icon
+    // Add "Root" button with home icon always present
     const rootButton = document.createElement("button");
     rootButton.id = "rootButton";
     rootButton.className = "crumb-button";
@@ -350,7 +410,7 @@ async function listFiles(prefix = "") {
             e.stopPropagation(); // Prevent bubbling to parent elements
             currentPrefix = e.target.dataset.prefix;
             initialConnectionLoad = false;
-            listFiles(currentPrefix);
+            listFiles();
           });
         } else {
           crumb.classList.add("active"); // Last part is the active/current folder
@@ -369,15 +429,21 @@ async function listFiles(prefix = "") {
     tbody.style.backgroundColor = "var(--bg-secondary)";
     tbody.style.borderColor = "var(--border-color)";
 
-    // Folders
+    // Folders - always displayed unless "folders" filter is explicitly excluded,
+    // but the current implementation filters *by* type.
+    // So if filter is "folders", only folders are shown. If "all", folders and files.
+    // If "documents", only documents are shown, no folders.
     data.CommonPrefixes.forEach((commonPrefix) => {
       const folderName = commonPrefix.Prefix.replace(prefix, "").replace(
         "/",
         ""
       );
-      const row = document.createElement("tr");
-      row.className = "file-item transition-colors duration-150";
-      row.innerHTML = `
+      const category = getFileTypeCategory(folderName, true); // Get category for folder
+
+      if (currentFilter === "all" || currentFilter === category) {
+        const row = document.createElement("tr");
+        row.className = "file-item transition-colors duration-150";
+        row.innerHTML = `
                 <td class="px-6 py-4 whitespace-nowrap">
                     <div class="flex items-center">
                         <i class="fas fa-folder folder-icon text-xl mr-3"></i>
@@ -390,12 +456,13 @@ async function listFiles(prefix = "") {
                     </div>
                 </td>
             `;
-      row.addEventListener("click", () => {
-        currentPrefix = commonPrefix.Prefix;
-        initialConnectionLoad = false; // Not an initial load when navigating into a folder
-        listFiles(currentPrefix);
-      });
-      tbody.appendChild(row);
+        row.addEventListener("click", () => {
+          currentPrefix = commonPrefix.Prefix;
+          initialConnectionLoad = false; // Not an initial load when navigating into a folder
+          listFiles(); // Re-list with new prefix (and current filter)
+        });
+        tbody.appendChild(row);
+      }
     });
 
     // Files
@@ -403,42 +470,67 @@ async function listFiles(prefix = "") {
       const fileName = content.Key.replace(prefix, "");
       if (fileName === "") return; // Skip the prefix itself if it's listed
 
+      const category = getFileTypeCategory(fileName);
+
+      // Apply filter here
+      if (currentFilter !== "all" && currentFilter !== category) {
+        return; // Skip if it doesn't match the current filter
+      }
+
       const fileSize = formatBytes(content.Size);
       const lastModified = new Date(content.LastModified).toLocaleDateString();
       const fileExtension = fileName.split(".").pop().toLowerCase();
       let fileIconClass = "fas fa-file file-icon"; // Default file icon
 
       if (fileExtension === "pdf") fileIconClass = "fas fa-file-pdf file-icon";
-      else if (fileExtension === "doc" || fileExtension === "docx")
+      else if (["doc", "docx", "odt"].includes(fileExtension))
         fileIconClass = "fas fa-file-word file-icon";
-      else if (fileExtension === "xls" || fileExtension === "xlsx")
+      else if (["xls", "xlsx", "ods"].includes(fileExtension))
         fileIconClass = "fas fa-file-excel file-icon";
-      else if (fileExtension === "ppt" || fileExtension === "pptx")
+      else if (["ppt", "pptx", "odp"].includes(fileExtension))
         fileIconClass = "fas fa-file-powerpoint file-icon";
       else if (
-        fileExtension === "jpg" ||
-        fileExtension === "jpeg" ||
-        fileExtension === "png" ||
-        fileExtension === "gif"
+        ["jpg", "jpeg", "png", "gif", "bmp", "svg", "webp", "ico"].includes(
+          fileExtension
+        )
       )
         fileIconClass = "fas fa-file-image file-icon";
       else if (
-        fileExtension === "zip" ||
-        fileExtension === "rar" ||
-        fileExtension === "7z"
+        ["zip", "rar", "7z", "tar", "gz", "bz2", "xz"].includes(fileExtension)
       )
         fileIconClass = "fas fa-file-archive file-icon";
-      else if (fileExtension === "mp3" || fileExtension === "wav")
+      else if (
+        ["mp3", "wav", "aac", "flac", "ogg", "wma"].includes(fileExtension)
+      )
         fileIconClass = "fas fa-file-audio file-icon";
-      else if (fileExtension === "mp4" || fileExtension === "mov")
+      else if (
+        ["mp4", "mov", "avi", "mkv", "webm", "flv", "wmv"].includes(
+          fileExtension
+        )
+      )
         fileIconClass = "fas fa-file-video file-icon";
-      else if (fileExtension === "txt")
+      else if (["txt", "md", "csv"].includes(fileExtension))
         fileIconClass = "fas fa-file-alt file-icon";
       else if (
-        fileExtension === "js" ||
-        fileExtension === "html" ||
-        fileExtension === "css" ||
-        fileExtension === "json"
+        [
+          "js",
+          "html",
+          "css",
+          "json",
+          "xml",
+          "py",
+          "java",
+          "c",
+          "cpp",
+          "h",
+          "php",
+          "rb",
+          "go",
+          "swift",
+          "ts",
+          "jsx",
+          "tsx",
+        ].includes(fileExtension)
       )
         fileIconClass = "fas fa-file-code file-icon";
 
@@ -481,14 +573,13 @@ async function listFiles(prefix = "") {
       showToast("Files loaded successfully!", "success");
       initialConnectionLoad = false; // Reset flag after the initial load
     }
-    hideFileManagerStatus(); // Clear fileManagerStatus after loading
+    // hideFileManagerStatus(); // Removed as per request
 
     syncStatusIcon.classList.remove("fa-spin");
     syncStatusButton.title = "Files are up-to-date";
   } catch (error) {
     console.error("Error listing files:", error);
-    showFileManagerStatus(`Error listing files: ${error.message}`, "error");
-    showToast(`Error listing files: ${error.message}`, "error");
+    showToast(`Error listing files: ${error.message}`, "error"); // Keep toast for errors
     initialConnectionLoad = false; // Reset flag on error too
     syncStatusIcon.classList.remove("fa-spin");
     syncStatusButton.title = `Error syncing: ${error.message}`;
@@ -512,8 +603,7 @@ async function uploadFiles(files) {
     showToast("Not connected to S3.", "error");
     return;
   }
-  showFileManagerStatus("Uploading files...", "info");
-  showToast("Uploading files...", "info");
+  showToast("Uploading files...", "info"); // Keep toast for upload initiation
   syncStatusIcon.classList.add("fa-spin");
   syncStatusButton.title = "Uploading...";
 
@@ -533,8 +623,8 @@ async function uploadFiles(files) {
     }
   }
   initialConnectionLoad = false; // Upload is not an initial load
-  listFiles(currentPrefix); // Refresh the file list after uploads
-  hideFileManagerStatus();
+  listFiles(); // Refresh the file list after uploads
+  // hideFileManagerStatus(); // Removed as per request
   fileUploadInput.value = ""; // Clear selected files from the input
 }
 
@@ -588,7 +678,7 @@ async function deleteFile(key) {
     await s3.deleteObject(params).promise();
     showToast(`'${key.split("/").pop()}' deleted successfully.`, "success");
     initialConnectionLoad = false; // Deletion is not an initial load
-    listFiles(currentPrefix); // Refresh list
+    listFiles(); // Refresh list
   } catch (error) {
     console.error("Error deleting file:", error);
     showToast(`Failed to delete: ${error.message}`, "error");
@@ -626,7 +716,7 @@ async function createNewFolder() {
     hideModal(createNewFolderModal);
     newFolderNameInput.value = ""; // Clear input
     initialConnectionLoad = false; // Folder creation is not an initial load
-    listFiles(currentPrefix); // Refresh list
+    listFiles(); // Refresh list
   } catch (error) {
     console.error("Error creating folder:", error);
     showToast(`Failed to create folder: ${error.message}`, "error");
@@ -700,7 +790,7 @@ disconnectButton.addEventListener("click", () => {
   connectionSection.classList.remove("hidden");
   fileManagerSection.classList.add("hidden");
   hideStatus();
-  hideFileManagerStatus();
+  // hideFileManagerStatus(); // Removed as per request
   accountIconContainer.classList.add("hidden");
   showToast("Disconnected from S3.", "info");
   initialConnectionLoad = true; // Reset initialConnectionLoad flag for next connection
@@ -739,7 +829,7 @@ themeToggleDropdown.addEventListener("click", () => {
 syncStatusButton.addEventListener("click", () => {
   if (s3) {
     showToast("Manually refreshing file list...", "info");
-    listFiles(currentPrefix); // Re-list files
+    listFiles(); // Re-list files
   } else {
     showToast("Cannot refresh: Not connected to S3.", "error");
   }
@@ -757,7 +847,7 @@ backButton.addEventListener("click", () => {
   currentPrefix = pathParts.length > 0 ? pathParts.join("/") + "/" : ""; // Reconstruct prefix
 
   initialConnectionLoad = false; // Not an initial load
-  listFiles(currentPrefix);
+  listFiles();
 });
 
 // Modal related event listeners
@@ -809,6 +899,55 @@ newShareLinkButton.addEventListener("click", () => {
     generateShareLink(fileKeyToShare, duration);
   } else {
     showToast("Please select a duration first.", "info");
+  }
+});
+
+// Filter Dropdown and Options
+filterButton.addEventListener("click", (event) => {
+  event.stopPropagation();
+  const buttonRect = filterButton.getBoundingClientRect();
+
+  // Position the dropdown
+  filterDropdown.style.top = `${buttonRect.bottom + window.scrollY + 8}px`; // 8px for spacing
+
+  // Align left edge of the dropdown with the left edge of the filter button
+  filterDropdown.style.left = `${buttonRect.left + window.scrollX}px`;
+
+  // Check if the dropdown goes off-screen to the right
+  const viewportWidth = window.innerWidth;
+  const dropdownRightEdge = filterDropdown.getBoundingClientRect().right;
+
+  if (dropdownRightEdge > viewportWidth) {
+    // If it goes off-screen, adjust its left position to align its right edge with the viewport's right edge,
+    // plus a small margin.
+    filterDropdown.style.left = `${
+      viewportWidth - filterDropdown.offsetWidth - 10
+    }px`; // 10px margin from right
+    // Ensure it doesn't go too far left if the screen is very small
+    if (filterDropdown.offsetLeft < 0) {
+      filterDropdown.style.left = "10px"; // 10px margin from left
+    }
+  }
+
+  filterDropdown.classList.toggle("hidden");
+});
+
+filterOptions.forEach((option) => {
+  option.addEventListener("click", (event) => {
+    currentFilter = event.target.dataset.filter;
+    showToast(`Filter set to: ${event.target.textContent}`, "info");
+    filterDropdown.classList.add("hidden"); // Hide dropdown after selection
+    listFiles(); // Re-list files with the new filter
+  });
+});
+
+// Close dropdown if clicked outside
+document.addEventListener("click", (event) => {
+  if (
+    !filterButton.contains(event.target) &&
+    !filterDropdown.contains(event.target)
+  ) {
+    filterDropdown.classList.add("hidden");
   }
 });
 

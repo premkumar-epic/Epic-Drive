@@ -16,7 +16,7 @@
   --folder-icon-color: #007bff; /* Folder icon color: Matches accent color */
   --file-icon-color: #b3d2e6; /* File icon color (derived from secondary btn) */
   --input-border: #aabccf;
-  --placeholder-color: #90a4ae; /* Placeholder text color */
+  --placeholder-color: #90a4ee; /* Placeholder text color */
   --dropdown-bg: #ffffff;
   --dropdown-border: #d1dde4;
   --dropdown-item-hover-bg: #f0f5f8;
@@ -25,6 +25,7 @@
   --toast-success: #28a745;
   --toast-error: #dc3545;
   --modal-overlay: rgba(0, 0, 0, 0.5); /* Modal overlay color */
+  --control-height: 40px; /* Define a consistent height for main controls */
 }
 
 /* Dark Mode Overrides */
@@ -161,8 +162,16 @@ table tbody tr:hover {
   background-color: var(--dropdown-bg);
   border: 1px solid var(--dropdown-border);
   color: var(--text-primary);
+  /* Added/Modified for pop-up effect and z-index */
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15); /* Soft shadow */
+  padding: 0.5rem 0; /* Add vertical padding for items */
+  border-radius: 0.5rem; /* Slightly more rounded corners */
   transition: background-color 0.3s ease, border-color 0.3s ease,
-    color 0.3s ease;
+    color 0.3s ease, box-shadow 0.3s ease;
+}
+.dropdown-item {
+  padding: 0.5rem 0.8rem; /* Slightly reduced padding */
+  font-size: 0.875rem; /* Ensure text fits */
 }
 .dropdown-item:hover {
   background-color: var(--dropdown-item-hover-bg);
@@ -255,7 +264,7 @@ table tbody tr:hover {
   color: #721c24; /* Darker red */
 }
 
-/* --- New File Manager Header Styles (Breadcrumbs & Sync) --- */
+/* --- File Manager Header Styles (Breadcrumbs & Sync) --- */
 .file-manager-header {
   display: flex;
   justify-content: space-between;
@@ -278,7 +287,7 @@ table tbody tr:hover {
   min-width: 0; /* Allow shrinking */
 }
 
-.file-path-breadcrumbs .crumb-button {
+.crumb-button {
   display: inline-flex;
   align-items: center;
   gap: 6px;
@@ -293,16 +302,16 @@ table tbody tr:hover {
   flex-shrink: 0; /* Prevent shrinking */
 }
 
-.file-path-breadcrumbs .crumb-button:hover:not(:disabled) {
+.crumb-button:hover:not(:disabled) {
   filter: brightness(90%);
 }
 
-.file-path-breadcrumbs .crumb-button:disabled {
+.crumb-button:disabled {
   opacity: 0.6;
   cursor: not-allowed;
 }
 
-.file-path-breadcrumbs .crumb-button i {
+.crumb-button i {
   font-size: 1rem;
 }
 
@@ -354,10 +363,6 @@ table tbody tr:hover {
   filter: brightness(90%);
 }
 
-.sync-icon {
-  font-size: 1.2rem;
-}
-
 .sync-icon.fa-spin {
   animation: fa-spin 2s infinite linear;
 }
@@ -374,4 +379,92 @@ table tbody tr:hover {
 /* Ensure close button stays to the right */
 #shareLinkModal .flex.justify-between.items-start {
   align-items: flex-start; /* Align items to the top to prevent close button moving if text wraps */
+}
+
+/* No underline for links by default */
+a.no-underline {
+  text-decoration: none;
+}
+
+/* Pop-up dropdown specific styles */
+#filterDropdown {
+  position: absolute;
+  top: 100%; /* Position below the filter button */
+  /* Removed 'right: 0;' as JS will control 'left' for direct alignment */
+  z-index: 9999;
+  width: 140px; /* Adjusted fixed width */
+  max-width: max-content; /* Allow it to shrink to content if smaller */
+  min-width: 120px; /* Ensure a minimum width */
+  /* Other dropdown styles are already defined in .dropdown-menu */
+}
+
+/* Ensure consistent height for all main control buttons and inputs */
+.controls-bar button,
+.controls-bar input[type="text"] {
+  height: var(--control-height);
+  box-sizing: border-box; /* Include padding and border in the element's total width and height */
+  padding-top: 0.5rem;
+  padding-bottom: 0.5rem;
+}
+
+/* Specific adjustments for elements within controls-bar */
+.upload-controls #selectedFileNames {
+  height: var(--control-height); /* Match button height */
+  display: flex; /* Use flexbox to center its text vertically */
+  align-items: center; /* Vertically center the text within the span */
+  padding-top: 0.5rem; /* Ensure consistent vertical padding for text alignment */
+  padding-bottom: 0.5rem;
+}
+
+/* Ensure the search input field within its group fills height and has correct padding */
+.search-input-group {
+  height: var(--control-height); /* Match control height */
+  display: flex;
+  align-items: center; /* Ensure internal items are vertically aligned */
+}
+
+.search-input-group input[type="text"] {
+  height: 100%; /* Fill parent search-input-group height */
+  padding-top: 0.5rem;
+  padding-bottom: 0.5rem;
+}
+
+/* Main controls bar styling (reinforcing alignment) */
+.controls-bar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center; /* Crucial for vertical alignment of the main groups */
+  margin-bottom: 1.5rem; /* Space below the controls bar */
+  flex-wrap: wrap; /* Allow wrapping on smaller screens */
+  gap: 1rem; /* Space between main control groups when wrapping */
+}
+
+/* Adjustments for small screens (from previous snippets, re-verified) */
+@media (max-width: 768px) {
+  .controls-bar {
+    flex-direction: column;
+    align-items: stretch; /* Stretch items to full width */
+    gap: 15px;
+  }
+  .upload-controls,
+  .search-filter-controls {
+    flex-direction: column;
+    align-items: stretch; /* Stretch internal items */
+    min-width: unset;
+    width: 100%;
+  }
+  .upload-controls button,
+  .search-filter-controls button {
+    width: 100%; /* Full width for buttons */
+  }
+  .search-input-group {
+    width: 100%;
+  }
+  .search-button {
+    width: auto; /* Allow auto width for the icon button */
+    flex-shrink: 0;
+  }
+  .filter-button {
+    width: 100%; /* Full width for filter button */
+  }
 }
