@@ -5,6 +5,7 @@ import FileManagerSection from "./components/FileManagerSection.jsx";
 import CreateNewFolderModal from "./components/CreateNewFolderModal.jsx";
 import ShareLinkModal from "./components/ShareLinkModal.jsx";
 import ToastContainer from "./components/ToastContainer.jsx";
+import UploadsContainer from "./components/UploadsContainer.jsx"; // NEW import
 
 function App() {
   const [isConnected, setIsConnected] = useState(false);
@@ -24,6 +25,8 @@ function App() {
   const [toasts, setToasts] = useState([]); // For managing toast notifications
   const [sharedFileName, setSharedFileName] = useState(""); // State for file name in share modal
   const [sharedFileKey, setSharedFileKey] = useState(""); // New state for the S3 key of the shared file
+  // State for active uploads (for progress bar/loader and cancellation)
+  const [activeUploads, setActiveUploads] = useState([]);
 
   // Converted global 'let' variables to state for better React management
   const [currentAwsBucket, setCurrentAwsBucket] = useState("");
@@ -31,8 +34,15 @@ function App() {
 
   // Ref for generating unique toast IDs
   const toastIdCounter = useRef(0);
+  // Ref for generating unique upload IDs
+  const uploadIdCounter = useRef(0);
   // Ref to hold the S3 client instance, managed outside of state to prevent re-instantiation on renders
   const s3ClientRef = useRef(null);
+
+  // State for drag-and-drop visual feedback
+  const [isDraggingOver, setIsDraggingOver] = useState(false);
+  // Ref to the main content area for drag-and-drop events
+  const mainContentRef = useRef(null);
 
   // Callback to show toast notifications
   const showToast = useCallback((message, type = "info", duration = 3000) => {
@@ -231,19 +241,22 @@ function App() {
               // Extract the name relevant to the current prefix for display and filtering
               // If prefixToList is "folderA/", and content.Key is "folderA/sub/file.txt", relativeKey is "sub/file.txt"
               const relativeKey = content.Key.substring(prefixToList.length);
-              const namePart = relativeKey.split("/").pop(); // Get just the file/folder name for display and filtering
+              // For search results, we want to match against the full relative path, not just the last part.
+              // We also filter by the name part if the item is a folder marker, so we avoid 'folder/' vs 'folder'.
+              const nameToMatch = content.Key.endsWith("/")
+                ? relativeKey.slice(0, -1)
+                : relativeKey; // For folders, remove trailing slash for matching
 
               if (
-                namePart &&
-                namePart
+                nameToMatch
                   .toLowerCase()
                   .includes(currentSearchQuery.toLowerCase())
               ) {
                 const isFolder = content.Key.endsWith("/");
                 items.push({
                   Key: content.Key,
-                  Name: relativeKey, // Use the relative path for display in search results
-                  Type: isFolder ? "folder" : getFileType(namePart), // Use 'namePart' for file type detection
+                  Name: relativeKey, // Use the full relative path for display in search results
+                  Type: isFolder ? "folder" : getFileType(nameToMatch), // Use 'nameToMatch' for file type detection
                   LastModified: content.LastModified,
                   Size: isFolder ? null : content.Size,
                 });
@@ -362,7 +375,6 @@ function App() {
       setCurrentAwsPrefix(""); // Reset path on successful connection
       setStatusMessage("");
       showToast("Successfully connected to S3 bucket!", "success");
-      // listFilesInCurrentFolder will be triggered by the dedicated useEffect
     } catch (error) {
       console.error("Connection error:", error);
       setIsConnected(false);
@@ -376,61 +388,199 @@ function App() {
   const disconnectS3 = useCallback(() => {
     setIsConnected(false);
     clearCredentials();
-    s3ClientRef.current = null;
-    setCurrentAwsBucket("");
-    setCurrentAwsPrefix("");
+    s3ClientRef.current = null; // Clear S3 instance in ref
+    setCurrentAwsBucket(""); // Reset state
+    setCurrentAwsPrefix(""); // Reset state
     setFileList([]);
     setStatusMessage("");
     setFileManagerStatus("");
+    setActiveUploads([]); // Clear any pending uploads on disconnect
     showToast("Disconnected from S3 bucket.", "info");
   }, [clearCredentials, showToast]);
 
-  // Uploads a file to the current S3 prefix
+  // Uploads a file to the current S3 prefix with progress tracking
   const uploadFile = useCallback(
     async (file) => {
       if (!file) {
         showToast("No file selected for upload.", "warning");
         return;
       }
-      setFileManagerStatus(`Uploading ${file.name}...`);
-      showToast(`Uploading ${file.name}...`, "info");
-      const s3Client = getS3Client();
-      if (!s3Client || !currentAwsBucket) {
-        setFileManagerStatus("Not connected to S3.");
+      if (!isConnected || !currentAwsBucket) {
+        showToast("Please connect to an S3 bucket first.", "warning");
         return;
       }
 
-      const uploadPath = currentAwsPrefix + file.name;
+      uploadIdCounter.current += 1;
+      const uploadId = uploadIdCounter.current;
+      const uploadFileName = file.name;
+
+      // Add to active uploads list
+      setActiveUploads((prevUploads) => [
+        ...prevUploads,
+        {
+          id: uploadId,
+          name: uploadFileName,
+          progress: 0,
+          status: "uploading",
+          uploader: null,
+          displayMessage: "",
+        },
+      ]);
+
+      const uploadPath = currentAwsPrefix + uploadFileName;
       const params = {
         Bucket: currentAwsBucket,
         Key: uploadPath,
         Body: file,
       };
 
+      const s3Client = getS3Client();
+      if (!s3Client) {
+        setActiveUploads((prevUploads) =>
+          prevUploads.map((upload) =>
+            upload.id === uploadId
+              ? {
+                  ...upload,
+                  status: "failed",
+                  displayMessage: "Failed: S3 client not ready",
+                }
+              : upload
+          )
+        );
+        showToast(
+          `Upload failed for ${uploadFileName}: S3 client not initialized.`,
+          "error"
+        );
+        // Remove failed upload after a short delay
+        setTimeout(() => {
+          setActiveUploads((prevUploads) =>
+            prevUploads.filter((upload) => upload.id !== uploadId)
+          );
+        }, 5000);
+        return;
+      }
+
+      // Use AWS.S3.ManagedUpload for progress events
+      const uploader = s3Client.upload(params);
+
+      // Store the uploader instance in the state for cancellation
+      setActiveUploads((prevUploads) =>
+        prevUploads.map((upload) =>
+          upload.id === uploadId ? { ...upload, uploader: uploader } : upload
+        )
+      );
+
+      uploader.on("httpUploadProgress", (progressEvent) => {
+        const progress = Math.round(
+          (progressEvent.loaded * 100) / progressEvent.total
+        );
+        setActiveUploads((prevUploads) =>
+          prevUploads.map((upload) =>
+            upload.id === uploadId ? { ...upload, progress: progress } : upload
+          )
+        );
+      });
+
       try {
-        await s3Client.upload(params).promise();
-        showToast(`Successfully uploaded ${file.name}`, "success");
+        await uploader.promise();
+
+        setActiveUploads((prevUploads) =>
+          prevUploads.map((upload) =>
+            upload.id === uploadId
+              ? {
+                  ...upload,
+                  progress: 100,
+                  status: "completed",
+                  displayMessage: "Completed",
+                }
+              : upload
+          )
+        );
+        showToast(`Successfully uploaded ${uploadFileName}`, "success");
+        // Remove completed upload after a short delay
+        setTimeout(() => {
+          setActiveUploads((prevUploads) =>
+            prevUploads.filter((upload) => upload.id !== uploadId)
+          );
+        }, 3000);
+
+        // Refresh file list only after successful upload
         await listFilesInCurrentFolder(
           currentAwsPrefix,
           searchQuery,
           filterType
         );
       } catch (error) {
-        console.error("Upload error:", file.name, error);
-        showToast(`Upload failed for ${file.name}: ${error.message}`, "error");
-        setFileManagerStatus(`Upload failed: ${error.message}`);
+        let message = "Upload failed";
+        if (error.code === "RequestAbortedError") {
+          console.log(`Upload for ${uploadFileName} was cancelled.`);
+          message = "Cancelled by user";
+          showToast(`Upload cancelled for ${uploadFileName}.`, "info");
+        } else {
+          console.error("Upload error:", uploadFileName, error);
+          message = `Failed: ${error.message}`;
+          showToast(
+            `Upload failed for ${uploadFileName}: ${error.message}`,
+            "error"
+          );
+        }
+        setActiveUploads((prevUploads) =>
+          prevUploads.map((upload) =>
+            upload.id === uploadId
+              ? { ...upload, status: "failed", displayMessage: message }
+              : upload
+          )
+        );
+        // Remove failed/cancelled upload after a short delay
+        setTimeout(() => {
+          setActiveUploads((prevUploads) =>
+            prevUploads.filter((upload) => upload.id !== uploadId)
+          );
+        }, 5000);
       }
     },
     [
       getS3Client,
       showToast,
       listFilesInCurrentFolder,
+      isConnected,
       currentAwsBucket,
       currentAwsPrefix,
       searchQuery,
       filterType,
     ]
   );
+
+  // Function to cancel an active upload
+  const cancelUpload = useCallback((uploadId) => {
+    setActiveUploads((prevUploads) => {
+      const uploadToCancel = prevUploads.find(
+        (upload) => upload.id === uploadId
+      );
+      if (uploadToCancel && uploadToCancel.uploader) {
+        uploadToCancel.uploader.abort(); // Abort the AWS S3 ManagedUpload
+        // Immediately update status and message to reflect cancellation
+        const updatedUploads = prevUploads.map((upload) =>
+          upload.id === uploadId
+            ? {
+                ...upload,
+                status: "cancelled",
+                progress: 0,
+                displayMessage: "Cancelled by user",
+              }
+            : upload
+        );
+        // Schedule removal for the cancelled upload
+        setTimeout(() => {
+          setActiveUploads((currentUploads) =>
+            currentUploads.filter((u) => u.id !== uploadId)
+          );
+        }, 5000); // Remove cancelled item after 5 seconds
+        return updatedUploads;
+      }
+      return prevUploads; // No change if upload not found or uploader not available
+    });
+  }, []);
 
   // Deletes a file or folder from S3
   const deleteFileOrFolder = useCallback(
@@ -665,12 +815,10 @@ function App() {
 
   // Effect to trigger file listing when connection and bucket are ready, or filter/search changes
   useEffect(() => {
-    // Only fetch if connected AND a bucket is selected AND the S3 client is initialized
     if (isConnected && currentAwsBucket && s3ClientRef.current) {
       console.log("App: useEffect for file listing triggered.");
       listFilesInCurrentFolder(currentAwsPrefix, searchQuery, filterType);
     } else if (isConnected && !currentAwsBucket) {
-      // If connected but no bucket, clear list (e.g., after disconnect)
       setFileList([]);
     }
   }, [
@@ -702,16 +850,12 @@ function App() {
   }, [currentAwsPrefix]);
 
   // Navigates into a folder or back to a parent folder
-  const navigateToFolder = useCallback(
-    async (prefix) => {
-      console.log("App: navigateToFolder called with prefix:", prefix);
-      setCurrentAwsPrefix(prefix); // Update currentAwsPrefix state
-      setSearchQuery(""); // Always clear search on navigation
-      setFilterType("all"); // Always reset filter to 'all' on navigation
-      // The useEffect for file listing will be triggered by these state changes
-    },
-    [] // Dependencies adjusted to only include what's needed for the callback definition
-  );
+  const navigateToFolder = useCallback(async (prefix) => {
+    console.log("App: navigateToFolder called with prefix:", prefix);
+    setCurrentAwsPrefix(prefix);
+    setSearchQuery("");
+    setFilterType("all");
+  }, []);
 
   // Handle clicks outside dropdowns (account menu and filter dropdown)
   useEffect(() => {
@@ -735,6 +879,103 @@ function App() {
       document.removeEventListener("click", handleClickOutside);
     };
   }, [accountMenuOpen]);
+
+  // Drag and Drop Handlers
+  const handleDragOver = useCallback(
+    (e) => {
+      e.preventDefault(); // Essential to allow a drop
+      if (isConnected) {
+        // Only show drag-over state if connected
+        setIsDraggingOver(true);
+      }
+    },
+    [isConnected]
+  );
+
+  const handleDragEnter = useCallback(
+    (e) => {
+      e.preventDefault();
+      if (isConnected) {
+        // Only show drag-over state if connected
+        setIsDraggingOver(true);
+      }
+    },
+    [isConnected]
+  );
+
+  const handleDragLeave = useCallback(
+    (e) => {
+      e.preventDefault();
+      // Use a small timeout to allow for dragging over child elements without flickering
+      const timeoutId = setTimeout(() => {
+        if (
+          isConnected &&
+          mainContentRef.current &&
+          !mainContentRef.current.contains(e.relatedTarget)
+        ) {
+          setIsDraggingOver(false);
+        }
+      }, 50); // Small delay
+      return () => clearTimeout(timeoutId);
+    },
+    [isConnected]
+  );
+
+  const handleDrop = useCallback(
+    async (e) => {
+      e.preventDefault();
+      setIsDraggingOver(false); // Reset visual feedback
+
+      if (!isConnected) {
+        showToast("Please connect to an S3 bucket first.", "warning");
+        return;
+      }
+
+      if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+        // Loop through all dropped files
+        for (let i = 0; i < e.dataTransfer.files.length; i++) {
+          const file = e.dataTransfer.files[i];
+          // Basic check to try and filter out "dropped folders" which often appear as file.type="" and file.size=0
+          if (file.type === "" && file.size === 0) {
+            showToast(
+              `Skipping folder: '${file.name}'. Drag-and-drop only supports files.`,
+              "warning"
+            );
+            continue; // Skip folders
+          }
+          uploadFile(file); // Call uploadFile for each file (it handles its own progress and toast)
+        }
+      } else {
+        showToast("No files dropped or unsupported data type.", "warning");
+      }
+    },
+    [isConnected, uploadFile, showToast]
+  );
+
+  // Effect to attach and clean up drag-and-drop listeners
+  useEffect(() => {
+    const mainElement = mainContentRef.current;
+    if (mainElement && isConnected) {
+      // Only attach listeners if connected
+      mainElement.addEventListener("dragover", handleDragOver);
+      mainElement.addEventListener("dragenter", handleDragEnter);
+      mainElement.addEventListener("dragleave", handleDragLeave);
+      mainElement.addEventListener("drop", handleDrop);
+
+      return () => {
+        mainElement.removeEventListener("dragover", handleDragOver);
+        mainElement.removeEventListener("dragenter", handleDragEnter);
+        mainElement.removeEventListener("dragleave", handleDragLeave);
+        mainElement.removeEventListener("drop", handleDrop);
+      };
+    }
+  }, [
+    isConnected,
+    handleDragOver,
+    handleDragEnter,
+    handleDragLeave,
+    handleDrop,
+  ]);
 
   return (
     <div className="font-open-sans">
@@ -818,7 +1059,12 @@ function App() {
         </div>
       </header>
 
-      <main className="container mx-auto p-4 md:p-8 main-content-area flex-grow">
+      <main
+        ref={mainContentRef}
+        className={`container mx-auto p-4 md:p-8 main-content-area flex-grow ${
+          isDraggingOver ? "drag-over" : ""
+        }`}
+      >
         {!isConnected ? (
           <ConnectionSection
             accessKeyId={accessKeyId}
@@ -876,6 +1122,8 @@ function App() {
       )}
 
       <ToastContainer toasts={toasts} />
+      {/* NEW: Uploads Container */}
+      <UploadsContainer uploads={activeUploads} onCancelUpload={cancelUpload} />
 
       <footer className="footer-bg py-4 text-center text-sm">
         <div className="container mx-auto px-4">

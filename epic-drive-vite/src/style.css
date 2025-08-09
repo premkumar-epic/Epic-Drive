@@ -1,3 +1,4 @@
+/* src/style.css */
 /* Define CSS Variables for Light Mode (Default) */
 :root {
   --bg-primary: #ffffff; /* Pure White background */
@@ -32,6 +33,14 @@
   --action-btn-share-bg: #28a745; /* Green */
   --action-btn-delete-bg: #dc3545; /* Red */
   --action-btn-text: #ffffff; /* White text for all action buttons */
+
+  --drag-over-border-color: #007bff; /* Blue border for drag-over effect */
+  --drag-over-bg-color: rgba(
+    0,
+    123,
+    255,
+    0.1
+  ); /* Light blue background for drag-over effect */
 }
 
 /* Dark Mode Overrides */
@@ -67,6 +76,14 @@ body.dark-mode {
   --action-btn-share-bg: #218838; /* Darker green for share */
   --action-btn-delete-bg: #c82333; /* Darker red for delete */
   /* --action-btn-text will remain white for dark mode too */
+
+  --drag-over-border-color: #3399ff; /* Dark mode blue border */
+  --drag-over-bg-color: rgba(
+    51,
+    153,
+    255,
+    0.1
+  ); /* Dark mode light blue background */
 }
 
 body {
@@ -548,4 +565,84 @@ a.no-underline {
   .filter-button {
     width: 100%; /* Full width for filter button */
   }
+}
+
+/* Drag and Drop visual feedback */
+.main-content-area.drag-over {
+  border: 3px dashed var(--drag-over-border-color);
+  background-color: var(--drag-over-bg-color);
+  border-radius: 12px;
+  transition: all 0.2s ease-in-out;
+}
+
+/* Uploads Container Styling */
+.uploads-container {
+  width: 320px; /* Fixed width for the container */
+  display: flex;
+  flex-direction: column;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15); /* Soft shadow */
+  border-radius: 8px;
+}
+
+.upload-header {
+  min-height: 40px; /* Ensures consistent height */
+  border-top-left-radius: 8px; /* Match container */
+  border-top-right-radius: 8px; /* Match container */
+  padding-right: 1rem; /* Padding to account for potential scrollbar */
+}
+
+.upload-items-list {
+  border-bottom-left-radius: 8px; /* Match container */
+  border-bottom-right-radius: 8px; /* Match container */
+  background-color: var(--bg-secondary); /* Consistent background */
+  /* Increased max-height to show more items, allowing internal scroll */
+  max-height: 280px; /* Adjust this value if needed to fit more or fewer items before scrolling */
+  overflow-y: auto; /* Enable vertical scrolling when content overflows */
+  overflow-x: hidden; /* Hide horizontal scrollbar to prevent unwanted side-to-side scrolling */
+  padding: 0 1rem 0.5rem 1rem; /* Padding around items, consistent with header */
+  box-sizing: border-box; /* Include padding in height calculation */
+}
+
+/* Individual Upload Item Styling */
+.upload-item {
+  background-color: var(--bg-secondary); /* Consistent with container */
+  padding: 8px 0; /* Vertical padding */
+  border-bottom: 1px solid var(--border-color); /* Separator */
+}
+
+.upload-item:last-child {
+  border-bottom: none; /* No border for the last item */
+}
+
+.progress-bar-background {
+  height: 6px; /* Height of the progress bar */
+  border-radius: 3px; /* Rounded ends for the bar */
+  background-color: var(
+    --btn-secondary-bg
+  ); /* Lighter background for the bar */
+}
+
+.progress-bar {
+  transition: width 0.3s ease-in-out, background-color 0.3s ease-in-out; /* Smooth transitions */
+  height: 100%;
+}
+
+/* Styling for the cancel button within UploadItem */
+.upload-item button {
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 4px; /* Small padding */
+  border-radius: 50%; /* Make it round */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0; /* Prevent shrinking */
+  color: var(--text-secondary); /* Default color */
+  transition: color 0.2s ease, background-color 0.2s ease;
+}
+
+.upload-item button:hover {
+  background-color: var(--dropdown-item-hover-bg); /* Hover background */
+  color: var(--text-primary); /* Darker text on hover */
 }
