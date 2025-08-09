@@ -17,57 +17,124 @@ function ShareLinkModal({
   showToast,
 }) {
   const [generatedLink, setGeneratedLink] = useState("");
-  // Default to 15 minutes (first option's value)
   const [selectedDuration, setSelectedDuration] = useState(
     DURATION_OPTIONS[0].value
   );
   const linkInputRef = useRef(null);
+  const isInitialMount = useRef(true); // Ref to track initial mount for StrictMode
+
+  // Function to truncate long file names for display in the modal title
+  // It shows the start and end of the file name with ellipsis in between
+  const truncateFileNameForModal = useCallback(
+    (fileName, charsToShowStart = 10, charsToShowEnd = 10) => {
+      const lastDotIndex = fileName.lastIndexOf(".");
+      let nameWithoutExtension = fileName;
+      let extension = "";
+
+      if (lastDotIndex !== -1 && lastDotIndex > fileName.lastIndexOf("/")) {
+        // Check if it's a file with an extension
+        nameWithoutExtension = fileName.substring(0, lastDotIndex);
+        extension = fileName.substring(lastDotIndex); // includes the dot
+      }
+
+      const totalDesiredLength =
+        charsToShowStart + 3 + charsToShowEnd + extension.length; // 3 for "..."
+
+      if (fileName.length <= totalDesiredLength) {
+        return fileName; // No need to truncate
+      }
+
+      // Ensure we don't try to get negative substrings if parts are too short
+      const actualStartChars = Math.min(
+        charsToShowStart,
+        nameWithoutExtension.length
+      );
+      const actualEndChars = Math.min(
+        charsToShowEnd,
+        nameWithoutExtension.length - actualStartChars
+      );
+
+      const truncatedStart = nameWithoutExtension.substring(
+        0,
+        actualStartChars
+      );
+      const truncatedEnd = nameWithoutExtension.substring(
+        nameWithoutExtension.length - actualEndChars
+      );
+
+      return `${truncatedStart}...${truncatedEnd}${extension}`;
+    },
+    []
+  );
 
   // Effect to automatically generate link when modal opens or duration changes
   useEffect(() => {
-    const generateLink = async () => {
-      if (sharedFileKey && selectedDuration) {
-        const url = await generateShareLink(sharedFileKey, selectedDuration);
-        setGeneratedLink(url);
+    const generateLinkEffect = async () => {
+      // console.log('ShareLinkModal useEffect: Running generateLinkEffect'); // Debug log
+      if (isInitialMount.current || !generatedLink) {
+        // Only generate if initial mount or link needs regeneration
+        // Check if this is the very first render of the component
+        if (sharedFileKey && selectedDuration) {
+          // console.log('ShareLinkModal useEffect: Calling generateShareLink'); // Debug log
+          const url = await generateShareLink(sharedFileKey, selectedDuration);
+          setGeneratedLink(url);
+          if (isInitialMount.current) {
+            isInitialMount.current = false; // Mark initial mount complete after first generation
+          }
+        }
+      } else {
+        // console.log('ShareLinkModal useEffect: Link already generated, skipping regeneration.'); // Debug log
       }
     };
-    generateLink();
-  }, [sharedFileKey, selectedDuration, generateShareLink]);
+    generateLinkEffect();
+  }, [sharedFileKey, selectedDuration, generateShareLink, generatedLink]);
 
   // Function to copy link to clipboard
   const handleCopyLink = useCallback(() => {
     if (linkInputRef.current) {
       linkInputRef.current.select();
-      document.execCommand("copy"); // Use document.execCommand for broader compatibility in iframes
-      showToast("Link copied to clipboard!", "success");
-      onClose(); // Automatically close modal after copying
+      // For cross-browser compatibility and iframe support
+      try {
+        document.execCommand("copy");
+        showToast("Link copied to clipboard!", "success");
+        onClose(); // Automatically close modal after copying
+      } catch (err) {
+        console.error("Failed to copy text: ", err);
+        showToast("Failed to copy link. Please copy manually.", "error");
+      }
     }
   }, [showToast, onClose]);
 
   // Function to handle duration button clicks
   const handleDurationChange = useCallback((duration) => {
     setSelectedDuration(duration);
-    // Link generation will be triggered by the useEffect when selectedDuration changes
+    setGeneratedLink(""); // Clear generated link to force re-generation when duration changes
   }, []);
 
   return (
     <div className="fixed inset-0 bg-modal-overlay flex items-center justify-center p-4 z-50">
-      <div className="bg-secondary rounded-lg shadow-xl p-6 w-full max-w-md transform transition-all scale-100 opacity-100">
+      <div className="main-card-bg rounded-lg shadow-xl p-6 w-full max-w-md transform transition-all scale-100 opacity-100">
+        {" "}
+        {/* Ensures opaque background */}
         <div className="flex justify-between items-start mb-4">
-          <h3 className="text-xl font-semibold text-primary">
+          <h3 className="text-xl font-semibold text-primary flex-grow pr-4">
             Share File:{" "}
-            <span id="sharedFileName" className="text-accent">
-              {sharedFileName}
+            <span
+              id="sharedFileName"
+              className="text-accent inline-block align-top"
+              title={sharedFileName} // Full name on hover
+              style={{ wordBreak: "break-word", whiteSpace: "normal" }} // Allow wrapping
+            >
+              {truncateFileNameForModal(sharedFileName)}
             </span>
           </h3>
           <button
             onClick={onClose}
-            className="text-secondary-pop hover:text-primary transition-colors duration-200"
+            className="text-secondary-pop hover:text-primary transition-colors duration-200 flex-shrink-0"
           >
             <i className="fas fa-times text-xl"></i>
           </button>
         </div>
-
         <div className="mb-4">
           <label
             htmlFor="shareLink"
@@ -85,7 +152,6 @@ function ShareLinkModal({
             placeholder="Generating link..."
           />
         </div>
-
         <div className="mb-4">
           <label className="block text-sm font-medium text-secondary mb-2">
             Link Duration:
@@ -95,19 +161,21 @@ function ShareLinkModal({
               <button
                 key={option.value}
                 onClick={() => handleDurationChange(option.value)}
-                className={`px-3 py-1 rounded-md text-sm transition-colors duration-200
+                // Apply 'btn-primary' for selected, 'btn-secondary' for others
+                className={`
+                  px-3 py-1 rounded-md text-sm transition-colors duration-200
                   ${
                     selectedDuration === option.value
-                      ? "bg-btn-primary-bg text-btn-primary-text" // Highlighted
-                      : "bg-btn-secondary-bg text-btn-secondary-text hover:bg-gray-200 dark:hover:bg-gray-700" // Normal
-                  }`}
+                      ? "btn-primary" // Use the combined btn-primary class for selected
+                      : "btn-secondary hover:brightness-90" // Use btn-secondary for others, apply hover explicitly
+                  }
+                `}
               >
                 {option.label}
               </button>
             ))}
           </div>
         </div>
-
         <div className="flex justify-end space-x-3">
           <button
             onClick={handleCopyLink}

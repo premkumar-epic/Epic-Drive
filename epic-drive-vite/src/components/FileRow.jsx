@@ -8,7 +8,7 @@ function FileRow({
   setShowShareModal,
   setSharedFileName,
   setSharedFileKey,
-  showToast,
+  showToast, // Receive showToast prop
 }) {
   const isFolder = item.Type === "folder";
 
@@ -83,6 +83,7 @@ function FileRow({
   };
 
   const handleShareClick = useCallback(() => {
+    // console.log("FileRow: Share button clicked for item:", item.Name); // Debug log
     if (typeof setSharedFileName === "function") {
       setSharedFileName(item.Name);
     }
@@ -91,6 +92,8 @@ function FileRow({
     }
     if (typeof setShowShareModal === "function") {
       setShowShareModal(true);
+      // Trigger toast immediately when share button is clicked, preventing duplicates from modal's useEffect
+      showToast(`Generating share link for ${item.Name}...`, "info");
     }
   }, [
     item.Name,
@@ -98,6 +101,7 @@ function FileRow({
     setSharedFileName,
     setSharedFileKey,
     setShowShareModal,
+    showToast, // Added showToast to dependencies
   ]);
 
   return (

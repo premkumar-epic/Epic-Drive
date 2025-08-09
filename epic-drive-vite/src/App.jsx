@@ -548,8 +548,6 @@ function App() {
         showToast("Invalid parameters for generating share link.", "error");
         return "";
       }
-      // setSharedFileName(fileName); // This is now handled when modal opens
-      showToast(`Generating share link for ${key.split("/").pop()}...`, "info");
       const s3Client = getS3Client();
       if (!s3Client || !currentBucket) {
         return "";
@@ -561,13 +559,12 @@ function App() {
           Key: key,
           Expires: durationSeconds, // in seconds (max 7 days = 604800 seconds)
         };
-        // getSignedUrlPromise is preferred for async/await
         const url = await s3Client.getSignedUrlPromise("getObject", params);
-        showToast("Share link generated successfully!", "success");
+        showToast("Share link generated successfully!", "success"); // This toast remains
         return url;
       } catch (error) {
         console.error("Error generating share link:", error);
-        showToast(`Failed to generate share link: ${error.message}`, "error");
+        showToast(`Failed to generate share link: ${error.message}`, "error"); // This toast remains
         return "";
       }
     },
@@ -783,8 +780,6 @@ function App() {
           generateShareLink={generateShareLink}
           sharedFileName={sharedFileName} // Pass the state variable
           sharedFileKey={sharedFileKey} // Pass the state variable
-          currentBucket={currentBucket}
-          currentPrefix={currentPrefix}
           showToast={showToast} // Pass showToast to the modal
         />
       )}
