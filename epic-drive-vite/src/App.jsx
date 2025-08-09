@@ -182,7 +182,7 @@ function App() {
   // Lists files and folders in the current prefix
   const listFilesInCurrentFolder = useCallback(
     async (
-      prefixToList, // Use passed prefix
+      prefixToList, // The current path the user is "in"
       currentSearchQuery,
       currentFilterType
     ) => {
@@ -193,7 +193,7 @@ function App() {
         currentSearchQuery,
         "filter:",
         currentFilterType
-      ); // Debug log
+      );
 
       let loadingTimer;
       loadingTimer = setTimeout(() => {
@@ -210,86 +210,125 @@ function App() {
       try {
         const params = {
           Bucket: currentAwsBucket,
-          Delimiter: "/",
           Prefix: prefixToList,
         };
 
-        const data = await s3Client.listObjectsV2(params).promise();
-
         let items = [];
 
-        if (data.CommonPrefixes) {
-          data.CommonPrefixes.forEach((commonPrefix) => {
-            const folderName = commonPrefix.Prefix.replace(
-              prefixToList,
-              ""
-            ).replace("/", "");
-            if (folderName) {
-              items.push({
-                Key: commonPrefix.Prefix,
-                Name: folderName,
-                Type: "folder",
-                LastModified: null,
-                Size: null,
-              });
-            }
-          });
+        if (currentSearchQuery) {
+          // SEARCH MODE: No Delimiter, recursive search by name within the current prefix
+          console.log("Performing recursive search...");
+          params.Delimiter = undefined; // Crucial for recursive listing
+          const data = await s3Client.listObjectsV2(params).promise();
+
+          if (data.Contents) {
+            data.Contents.forEach((content) => {
+              // Ignore the "folder" object itself if it's the exact prefix and ends with '/'
+              if (content.Key === prefixToList && content.Key.endsWith("/")) {
+                return;
+              }
+
+              // Extract the name relevant to the current prefix for display and filtering
+              // If prefixToList is "folderA/", and content.Key is "folderA/sub/file.txt", relativeKey is "sub/file.txt"
+              const relativeKey = content.Key.substring(prefixToList.length);
+              const namePart = relativeKey.split("/").pop(); // Get just the file/folder name for display and filtering
+
+              if (
+                namePart &&
+                namePart
+                  .toLowerCase()
+                  .includes(currentSearchQuery.toLowerCase())
+              ) {
+                const isFolder = content.Key.endsWith("/");
+                items.push({
+                  Key: content.Key,
+                  Name: relativeKey, // Use the relative path for display in search results
+                  Type: isFolder ? "folder" : getFileType(namePart), // Use 'namePart' for file type detection
+                  LastModified: content.LastModified,
+                  Size: isFolder ? null : content.Size,
+                });
+              }
+            });
+          }
+        } else {
+          // BROWSING MODE: Use Delimiter, non-recursive
+          console.log("Performing non-recursive browsing...");
+          params.Delimiter = "/"; // Only list immediate children
+          const data = await s3Client.listObjectsV2(params).promise();
+
+          // Add folders (CommonPrefixes)
+          if (data.CommonPrefixes) {
+            data.CommonPrefixes.forEach((commonPrefix) => {
+              const folderName = commonPrefix.Prefix.replace(
+                prefixToList,
+                ""
+              ).replace("/", "");
+              if (folderName) {
+                items.push({
+                  Key: commonPrefix.Prefix,
+                  Name: folderName,
+                  Type: "folder",
+                  LastModified: null,
+                  Size: null,
+                });
+              }
+            });
+          }
+
+          // Add files (Contents) directly in this prefix
+          if (data.Contents) {
+            data.Contents.forEach((content) => {
+              if (content.Key !== prefixToList && !content.Key.endsWith("/")) {
+                const fileName = content.Key.replace(prefixToList, "");
+                items.push({
+                  Key: content.Key,
+                  Name: fileName,
+                  Type: getFileType(fileName),
+                  LastModified: content.LastModified,
+                  Size: content.Size,
+                });
+              }
+            });
+          }
         }
 
-        if (data.Contents) {
-          data.Contents.forEach((content) => {
-            if (content.Key !== prefixToList && !content.Key.endsWith("/")) {
-              const fileName = content.Key.replace(prefixToList, "");
-              items.push({
-                Key: content.Key,
-                Name: fileName,
-                Type: getFileType(fileName),
-                LastModified: content.LastModified,
-                Size: content.Size,
-              });
-            }
-          });
-        }
-
-        const filteredItems = items
-          .filter((item) =>
-            item.Name.toLowerCase().includes(currentSearchQuery.toLowerCase())
+        // Apply filter after determining search/browse mode
+        const filteredItems = items.filter((item) => {
+          if (currentFilterType === "all") return true;
+          if (currentFilterType === "folders" && item.Type === "folder")
+            return true;
+          // For documents, check against common document types
+          if (
+            currentFilterType === "documents" &&
+            ["document", "text", "spreadsheet", "presentation", "pdf"].includes(
+              item.Type
+            )
           )
-          .filter((item) => {
-            if (currentFilterType === "all") return true;
-            if (currentFilterType === "folders" && item.Type === "folder")
-              return true;
-            if (
-              currentFilterType === "documents" &&
-              [
-                "document",
-                "text",
-                "spreadsheet",
-                "presentation",
-                "pdf",
-              ].includes(item.Type)
-            )
-              return true;
-            if (currentFilterType === "images" && item.Type === "image")
-              return true;
-            if (currentFilterType === "videos" && item.Type === "video")
-              return true;
-            if (currentFilterType === "audio" && item.Type === "audio")
-              return true;
-            if (currentFilterType === "code" && item.Type === "code")
-              return true;
-            if (currentFilterType === "archives" && item.Type === "archive")
-              return true;
-            if (
-              currentFilterType === "other" &&
-              ["other", "unknown"].includes(item.Type)
-            )
-              return true;
-            return false;
-          });
+            return true;
+          if (currentFilterType === "images" && item.Type === "image")
+            return true;
+          if (currentFilterType === "videos" && item.Type === "video")
+            return true;
+          if (currentFilterType === "audio" && item.Type === "audio")
+            return true;
+          if (currentFilterType === "code" && item.Type === "code") return true;
+          if (currentFilterType === "archives" && item.Type === "archive")
+            return true;
+          if (currentFilterType === "other" && item.Type === "other")
+            return true;
+          return false;
+        });
+
+        // Sort items: folders first, then files, both alphabetically by their display name
+        filteredItems.sort((a, b) => {
+          if (a.Type === "folder" && b.Type !== "folder") return -1;
+          if (a.Type !== "folder" && b.Type === "folder") return 1;
+          return a.Name.localeCompare(b.Name);
+        });
 
         setFileList(filteredItems);
-        setCurrentAwsPrefix(prefixToList);
+        // setCurrentAwsPrefix is managed by navigateToFolder.
+        // For search results, the prefix itself does not change, only the listed items.
         clearTimeout(loadingTimer);
         setFileManagerStatus("");
       } catch (error) {
@@ -299,12 +338,12 @@ function App() {
         showToast(`Error loading files: ${error.message}`, "error");
       }
     },
-    [getS3Client, showToast, getFileType, currentAwsBucket] // Dependencies are correct for this useCallback
+    [getS3Client, showToast, getFileType, currentAwsBucket]
   );
 
   // Connects to the S3 bucket
   const connectToS3 = useCallback(async () => {
-    console.log("App: connectToS3 called"); // Debug log
+    console.log("App: connectToS3 called");
     setStatusMessage("Connecting...");
     showToast("Connecting to S3 bucket...", "info");
     const s3Client = getS3Client();
@@ -323,7 +362,7 @@ function App() {
       setCurrentAwsPrefix(""); // Reset path on successful connection
       setStatusMessage("");
       showToast("Successfully connected to S3 bucket!", "success");
-      // REMOVED: listFilesInCurrentFolder call from here. It will now be triggered by the dedicated useEffect.
+      // listFilesInCurrentFolder will be triggered by the dedicated useEffect
     } catch (error) {
       console.error("Connection error:", error);
       setIsConnected(false);
@@ -331,15 +370,15 @@ function App() {
       showToast(`Connection failed: ${error.message || error.code}`, "error");
       clearCredentials();
     }
-  }, [bucketName, saveCredentials, clearCredentials, getS3Client, showToast]); // Dependencies updated: removed listFilesInCurrentFolder, searchQuery, filterType
+  }, [bucketName, saveCredentials, clearCredentials, getS3Client, showToast]);
 
   // Disconnects from S3
   const disconnectS3 = useCallback(() => {
     setIsConnected(false);
     clearCredentials();
-    s3ClientRef.current = null; // Clear S3 instance in ref
-    setCurrentAwsBucket(""); // Reset state
-    setCurrentAwsPrefix(""); // Reset state
+    s3ClientRef.current = null;
+    setCurrentAwsBucket("");
+    setCurrentAwsPrefix("");
     setFileList([]);
     setStatusMessage("");
     setFileManagerStatus("");
@@ -605,7 +644,7 @@ function App() {
 
   // Effect for initial load and theme preference (only calls connectToS3 if credentials exist)
   useEffect(() => {
-    console.log("App: useEffect for initial load/theme triggered"); // Debug log
+    console.log("App: useEffect for initial load/theme triggered");
     const savedTheme = localStorage.getItem("theme");
     if (
       savedTheme === "dark" ||
@@ -618,18 +657,21 @@ function App() {
       setThemeIconClass("fas fa-moon mr-2");
     }
 
-    // Only attempt to connect if credentials are found AND we are not already connected
     if (loadCredentials() && !isConnected) {
       setStatusMessage("Attempting to reconnect using saved credentials...");
       connectToS3();
     }
-  }, [loadCredentials, connectToS3, isConnected]); // Added isConnected to dependencies
+  }, [loadCredentials, connectToS3, isConnected]);
 
-  // NEW: Effect to trigger file listing when connection and bucket are ready, or filter/search changes
+  // Effect to trigger file listing when connection and bucket are ready, or filter/search changes
   useEffect(() => {
+    // Only fetch if connected AND a bucket is selected AND the S3 client is initialized
     if (isConnected && currentAwsBucket && s3ClientRef.current) {
-      console.log("App: useEffect for file listing triggered."); // Debug log
+      console.log("App: useEffect for file listing triggered.");
       listFilesInCurrentFolder(currentAwsPrefix, searchQuery, filterType);
+    } else if (isConnected && !currentAwsBucket) {
+      // If connected but no bucket, clear list (e.g., after disconnect)
+      setFileList([]);
     }
   }, [
     isConnected,
@@ -662,13 +704,11 @@ function App() {
   // Navigates into a folder or back to a parent folder
   const navigateToFolder = useCallback(
     async (prefix) => {
-      // console.log('App: navigateToFolder called with prefix:', prefix); // Debug log
-      // Do not reset filterType or searchQuery here, let the useEffect handle updates
-      // Instead, explicitly update currentAwsPrefix to trigger the useEffect
-      setCurrentAwsPrefix(prefix);
+      console.log("App: navigateToFolder called with prefix:", prefix);
+      setCurrentAwsPrefix(prefix); // Update currentAwsPrefix state
       setSearchQuery(""); // Always clear search on navigation
       setFilterType("all"); // Always reset filter to 'all' on navigation
-      // The file listing will be handled by the dedicated useEffect due to currentAwsPrefix, searchQuery, filterType change
+      // The useEffect for file listing will be triggered by these state changes
     },
     [] // Dependencies adjusted to only include what's needed for the callback definition
   );

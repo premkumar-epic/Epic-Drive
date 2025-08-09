@@ -8,7 +8,7 @@ function FileRow({
   setShowShareModal,
   setSharedFileName,
   setSharedFileKey,
-  showToast, // Receive showToast prop
+  showToast,
 }) {
   const isFolder = item.Type === "folder";
 
@@ -50,40 +50,62 @@ function FileRow({
     }
   };
 
-  // Function to truncate long file names with ellipsis for display
-  const truncateFileName = (fileName, maxLength = 30, charsToShowEnd = 8) => {
-    if (fileName.length <= maxLength) {
-      return fileName;
+  // Function to truncate long file names, prioritizing showing path context.
+  // Only the *last part* of the path (the actual file/folder name) is truncated.
+  const truncateFileName = (
+    fullRelativePath,
+    maxLength = 30,
+    charsToShowEnd = 8
+  ) => {
+    const pathParts = fullRelativePath.split("/");
+    const lastPart = pathParts.pop(); // Get the file/folder name part
+
+    if (!lastPart) {
+      // Handle cases like "folder/" where pop() might return ""
+      return fullRelativePath;
     }
 
-    const lastDotIndex = fileName.lastIndexOf(".");
-    let nameWithoutExtension = fileName;
+    if (lastPart.length <= maxLength) {
+      return fullRelativePath; // Return full path if the last part is short enough
+    }
+
+    const lastDotIndex = lastPart.lastIndexOf(".");
+    let nameWithoutExtension = lastPart;
     let extension = "";
 
-    if (lastDotIndex !== -1 && lastDotIndex > fileName.lastIndexOf("/")) {
-      nameWithoutExtension = fileName.substring(0, lastDotIndex);
-      extension = fileName.substring(lastDotIndex);
+    if (lastDotIndex !== -1 && lastDotIndex > 0) {
+      nameWithoutExtension = lastPart.substring(0, lastDotIndex);
+      extension = lastPart.substring(lastDotIndex);
     }
 
-    const ellipsisLength = 3; // "..."
+    const ellipsisLength = 3;
     const totalFixedLength = charsToShowEnd + extension.length + ellipsisLength;
 
     if (maxLength <= totalFixedLength) {
-      return fileName.substring(0, maxLength - ellipsisLength) + "...";
+      // If even the truncated last part would exceed maxLength, just truncate the last part very simply
+      const truncated =
+        lastPart.substring(0, maxLength - ellipsisLength) + "...";
+      return pathParts.length > 0
+        ? pathParts.join("/") + "/" + truncated
+        : truncated;
     }
 
     const startLength = maxLength - totalFixedLength;
 
-    return `${nameWithoutExtension.substring(
+    const truncatedLastPart = `${nameWithoutExtension.substring(
       0,
       startLength
     )}...${nameWithoutExtension.substring(
       nameWithoutExtension.length - charsToShowEnd
     )}${extension}`;
+
+    // Reconstruct the path with the truncated last part
+    return pathParts.length > 0
+      ? pathParts.join("/") + "/" + truncatedLastPart
+      : truncatedLastPart;
   };
 
   const handleShareClick = useCallback(() => {
-    // console.log("FileRow: Share button clicked for item:", item.Name); // Debug log
     if (typeof setSharedFileName === "function") {
       setSharedFileName(item.Name);
     }
@@ -92,7 +114,6 @@ function FileRow({
     }
     if (typeof setShowShareModal === "function") {
       setShowShareModal(true);
-      // Trigger toast immediately when share button is clicked, preventing duplicates from modal's useEffect
       showToast(`Generating share link for ${item.Name}...`, "info");
     }
   }, [
@@ -101,8 +122,26 @@ function FileRow({
     setSharedFileName,
     setSharedFileKey,
     setShowShareModal,
-    showToast, // Added showToast to dependencies
+    showToast,
   ]);
+
+  // Handle click on the file/folder name
+  const handleItemClick = useCallback(() => {
+    if (isFolder) {
+      // If it's a folder, navigate directly to its key (which is a prefix)
+      navigateToFolder(item.Key);
+    } else {
+      // If it's a file, navigate to its parent directory
+      const lastSlashIndex = item.Key.lastIndexOf("/");
+      if (lastSlashIndex !== -1) {
+        const parentFolderPrefix = item.Key.substring(0, lastSlashIndex + 1);
+        navigateToFolder(parentFolderPrefix);
+      } else {
+        // If no slash, it's in the root, navigate to root
+        navigateToFolder("");
+      }
+    }
+  }, [isFolder, item.Key, navigateToFolder]);
 
   return (
     <tr
@@ -125,24 +164,14 @@ function FileRow({
                 : "var(--file-icon-color)",
             }}
           ></i>
-          {isFolder ? (
-            <button
-              className="text-accent hover:underline focus:outline-none file-name-text overflow-hidden text-ellipsis"
-              onClick={() => navigateToFolder(item.Key)}
-              title={item.Name} // Add title for hover tooltip
-            >
-              {truncateFileName(item.Name)}
-            </button>
-          ) : (
-            <span
-              className="file-name-text overflow-hidden text-ellipsis"
-              title={item.Name}
-            >
-              {" "}
-              {/* Add title for hover tooltip */}
-              {truncateFileName(item.Name)}
-            </span>
-          )}
+          <button
+            className="text-accent hover:underline focus:outline-none file-name-text overflow-hidden text-ellipsis"
+            onClick={handleItemClick} // Use the new handler here
+            title={item.Name} // Original full relative path for hover tooltip
+          >
+            {truncateFileName(item.Name)}{" "}
+            {/* Display truncated relative path */}
+          </button>
         </div>
       </td>
 
@@ -173,7 +202,6 @@ function FileRow({
       <td className="pr-6 py-3 whitespace-nowrap text-sm font-medium text-right">
         <div className="flex items-center justify-end space-x-1.5 flex-shrink-0">
           {" "}
-          {/* space-x-1.5 for button padding */}
           {!isFolder && (
             <button
               className="px-2 py-1 rounded-md transition-colors duration-200"
