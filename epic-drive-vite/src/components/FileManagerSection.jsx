@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState, useEffect, useRef } from "react";
 import FileRow from "./FileRow.jsx";
 
 function FileManagerSection({
@@ -23,6 +23,9 @@ function FileManagerSection({
   getBreadcrumbs,
 }) {
   const breadcrumbs = getBreadcrumbs();
+  const [showFilterDropdown, setShowFilterDropdown] = useState(false);
+  const filterDropdownRef = useRef(null);
+  const filterButtonRef = useRef(null);
 
   const handleFileUpload = (event) => {
     const file = event.target.files[0];
@@ -45,9 +48,33 @@ function FileManagerSection({
   };
 
   const handleFilterChange = (newFilterType) => {
+    // console.log('FileManagerSection: handleFilterChange called with:', newFilterType); // Debug log
     setFilterType(newFilterType);
     listFilesInCurrentFolder(currentPrefix, searchQuery, newFilterType);
+    setShowFilterDropdown(false); // Close dropdown after selection
   };
+
+  const toggleFilterDropdown = () => {
+    setShowFilterDropdown((prev) => !prev);
+  };
+
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (
+        filterDropdownRef.current &&
+        !filterDropdownRef.current.contains(event.target) &&
+        filterButtonRef.current &&
+        !filterButtonRef.current.contains(event.target)
+      ) {
+        setShowFilterDropdown(false);
+      }
+    };
+
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, []);
 
   return (
     <section
@@ -59,22 +86,21 @@ function FileManagerSection({
       {/* Breadcrumbs */}
       <nav className="text-sm mb-4 flex items-center">
         <ol className="list-none p-0 inline-flex flex-wrap items-center">
-          {/* Home/Root button */}
           <li className="flex items-center">
             <button
-              onClick={() => navigateToFolder("")} // Navigate to root
+              type="button" // Explicitly set type to button
+              onClick={() => navigateToFolder("")}
               className={`text-accent hover:underline focus:outline-none flex items-center ${
                 currentPrefix === ""
                   ? "text-secondary-pop cursor-default no-underline"
                   : ""
               }`}
-              disabled={currentPrefix === ""} // Disable if already at root
+              disabled={currentPrefix === ""}
             >
               <i className="fas fa-home mr-1"></i> Root
             </button>
           </li>
 
-          {/* Dynamic Breadcrumbs */}
           {breadcrumbs
             .filter((crumb) => crumb.name !== "Root" && crumb.prefix !== "")
             .map((crumb, index) => (
@@ -86,6 +112,7 @@ function FileManagerSection({
                   </span>
                 ) : (
                   <button
+                    type="button" // Explicitly set type to button
                     onClick={() => navigateToFolder(crumb.prefix)}
                     className="text-accent hover:underline focus:outline-none"
                   >
@@ -114,6 +141,7 @@ function FileManagerSection({
             onChange={handleFileUpload}
           />
           <button
+            type="button" // Explicitly set type to button
             id="newFolderButton"
             className="btn-secondary px-4 py-2 rounded-md text-sm"
             onClick={handleNewFolderClick}
@@ -137,7 +165,7 @@ function FileManagerSection({
               onChange={handleSearchChange}
             />
             <button
-              type="submit"
+              type="submit" // This is intentionally submit for search form
               id="searchButton"
               className="px-3 py-2 bg-btn-secondary-bg text-btn-secondary-text hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors duration-200"
             >
@@ -147,99 +175,147 @@ function FileManagerSection({
 
           <div className="relative dropdown">
             <button
+              type="button" // Explicitly set type to button
               id="filterButton"
+              ref={filterButtonRef}
               className="btn-secondary px-4 py-2 rounded-md text-sm dropdown-toggle"
-              type="button"
+              onClick={toggleFilterDropdown}
             >
               <i className="fas fa-filter mr-2"></i> Filter:{" "}
               <span id="currentFilterText">
                 {filterType.charAt(0).toUpperCase() + filterType.slice(1)}
               </span>
             </button>
-            <div
-              id="filterDropdown"
-              className="dropdown-menu absolute right-0 mt-2 w-48 rounded-md shadow-lg hidden"
-            >
+            {showFilterDropdown && (
               <div
-                className="py-1"
-                role="menu"
-                aria-orientation="vertical"
-                aria-labelledby="filterButton"
+                id="filterDropdown"
+                ref={filterDropdownRef}
+                className="dropdown-menu absolute right-0 mt-2 w-48 rounded-md shadow-lg"
               >
-                <button
-                  className="block w-full text-left px-4 py-2 text-sm dropdown-item filter-option"
-                  data-filter="all"
-                  role="menuitem"
-                  onClick={() => handleFilterChange("all")}
+                <div
+                  className="py-1"
+                  role="menu"
+                  aria-orientation="vertical"
+                  aria-labelledby="filterButton"
                 >
-                  All Files
-                </button>
-                <button
-                  className="block w-full text-left px-4 py-2 text-sm dropdown-item filter-option"
-                  data-filter="folders"
-                  role="menuitem"
-                  onClick={() => handleFilterChange("folders")}
-                >
-                  Folders
-                </button>
-                <button
-                  className="block w-full text-left px-4 py-2 text-sm dropdown-item filter-option"
-                  data-filter="documents"
-                  role="menuitem"
-                  onClick={() => handleFilterChange("documents")}
-                >
-                  Documents
-                </button>
-                <button
-                  className="block w-full text-left px-4 py-2 text-sm dropdown-item filter-option"
-                  data-filter="images"
-                  role="menuitem"
-                  onClick={() => handleFilterChange("images")}
-                >
-                  Images
-                </button>
-                <button
-                  className="block w-full text-left px-4 py-2 text-sm dropdown-item filter-option"
-                  data-filter="videos"
-                  role="menuitem"
-                  onClick={() => handleFilterChange("videos")}
-                >
-                  Videos
-                </button>
-                <button
-                  className="block w-full text-left px-4 py-2 text-sm dropdown-item filter-option"
-                  data-filter="audio"
-                  role="menuitem"
-                  onClick={() => handleFilterChange("audio")}
-                >
-                  Audio
-                </button>
-                <button
-                  className="block w-full text-left px-4 py-2 text-sm dropdown-item filter-option"
-                  data-filter="code"
-                  role="menuitem"
-                  onClick={() => handleFilterChange("code")}
-                >
-                  Code
-                </button>
-                <button
-                  className="block w-full text-left px-4 py-2 text-sm dropdown-item filter-option"
-                  data-filter="archives"
-                  role="menuitem"
-                  onClick={() => handleFilterChange("archives")}
-                >
-                  Archives
-                </button>
-                <button
-                  className="block w-full text-left px-4 py-2 text-sm dropdown-item filter-option"
-                  data-filter="other"
-                  role="menuitem"
-                  onClick={() => handleFilterChange("other")}
-                >
-                  Other
-                </button>
+                  <button
+                    type="button" // Crucial: Set type to button
+                    className={`block w-full text-left px-4 py-2 text-sm dropdown-item ${
+                      filterType === "all" ? "bg-gray-100 dark:bg-gray-700" : ""
+                    }`}
+                    data-filter="all"
+                    role="menuitem"
+                    onClick={() => handleFilterChange("all")}
+                  >
+                    All Files
+                  </button>
+                  <button
+                    type="button" // Crucial: Set type to button
+                    className={`block w-full text-left px-4 py-2 text-sm dropdown-item ${
+                      filterType === "folders"
+                        ? "bg-gray-100 dark:bg-gray-700"
+                        : ""
+                    }`}
+                    data-filter="folders"
+                    role="menuitem"
+                    onClick={() => handleFilterChange("folders")}
+                  >
+                    Folders
+                  </button>
+                  <button
+                    type="button" // Crucial: Set type to button
+                    className={`block w-full text-left px-4 py-2 text-sm dropdown-item ${
+                      filterType === "documents"
+                        ? "bg-gray-100 dark:bg-gray-700"
+                        : ""
+                    }`}
+                    data-filter="documents"
+                    role="menuitem"
+                    onClick={() => handleFilterChange("documents")}
+                  >
+                    Documents
+                  </button>
+                  <button
+                    type="button" // Crucial: Set type to button
+                    className={`block w-full text-left px-4 py-2 text-sm dropdown-item ${
+                      filterType === "images"
+                        ? "bg-gray-100 dark:bg-gray-700"
+                        : ""
+                    }`}
+                    data-filter="images"
+                    role="menuitem"
+                    onClick={() => handleFilterChange("images")}
+                  >
+                    Images
+                  </button>
+                  <button
+                    type="button" // Crucial: Set type to button
+                    className={`block w-full text-left px-4 py-2 text-sm dropdown-item ${
+                      filterType === "videos"
+                        ? "bg-gray-100 dark:bg-gray-700"
+                        : ""
+                    }`}
+                    data-filter="videos"
+                    role="menuitem"
+                    onClick={() => handleFilterChange("videos")}
+                  >
+                    Videos
+                  </button>
+                  <button
+                    type="button" // Crucial: Set type to button
+                    className={`block w-full text-left px-4 py-2 text-sm dropdown-item ${
+                      filterType === "audio"
+                        ? "bg-gray-100 dark:bg-gray-700"
+                        : ""
+                    }`}
+                    data-filter="audio"
+                    role="menuitem"
+                    onClick={() => handleFilterChange("audio")}
+                  >
+                    Audio
+                  </button>
+                  <button
+                    type="button" // Crucial: Set type to button
+                    className={`block w-full text-left px-4 py-2 text-sm dropdown-item ${
+                      filterType === "code"
+                        ? "bg-gray-100 dark:bg-gray-700"
+                        : ""
+                    }`}
+                    data-filter="code"
+                    role="menuitem"
+                    onClick={() => handleFilterChange("code")}
+                  >
+                    Code
+                  </button>
+                  <button
+                    type="button" // Crucial: Set type to button
+                    className={`block w-full text-left px-4 py-2 text-sm dropdown-item ${
+                      filterType === "archives"
+                        ? "bg-gray-100 dark:bg-gray-700"
+                        : ""
+                    }`}
+                    data-filter="archives"
+                    role="menuitem"
+                    onClick={() => handleFilterChange("archives")}
+                  >
+                    Archives
+                  </button>
+                  <button
+                    type="button" // Crucial: Set type to button
+                    className={`block w-full text-left px-4 py-2 text-sm dropdown-item ${
+                      filterType === "other"
+                        ? "bg-gray-100 dark:bg-gray-700"
+                        : ""
+                    }`}
+                    data-filter="other"
+                    role="menuitem"
+                    onClick={() => handleFilterChange("other")}
+                  >
+                    Other
+                  </button>
+                </div>
               </div>
-            </div>
+            )}
           </div>
         </div>
       </div>
@@ -247,12 +323,11 @@ function FileManagerSection({
       {/* Back button positioned above the table */}
       {currentPrefix !== "" && (
         <div className="mb-4">
-          {" "}
-          {/* Added margin-bottom for spacing */}
           <button
+            type="button" // Explicitly set type to button
             onClick={() =>
               navigateToFolder(
-                breadcrumbs[breadcrumbs.length - 2]?.prefix || ""
+                getBreadcrumbs()[getBreadcrumbs().length - 2]?.prefix || ""
               )
             }
             className="btn-secondary px-3 py-1.5 rounded-md text-sm flex items-center"

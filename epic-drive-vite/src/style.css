@@ -96,7 +96,17 @@ body {
 .btn-primary {
   background-color: var(--btn-primary-bg);
   color: var(--btn-primary-text);
+  /* Added common button styles directly here to be consistent */
+  padding: 0.5rem 0.75rem; /* Consistent padding */
+  border-radius: 0.375rem; /* Consistent rounded corners */
+  font-size: 0.875rem; /* Consistent text size */
   transition: background-color 0.3s ease, color 0.3s ease;
+  cursor: pointer;
+  border: none; /* Ensure no default border */
+  display: inline-flex; /* Align icon and text */
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem; /* Space between icon and text if any */
 }
 .btn-primary:hover:not(:disabled) {
   filter: brightness(90%); /* Universal darken on hover */
@@ -108,7 +118,17 @@ body {
 .btn-secondary {
   background-color: var(--btn-secondary-bg);
   color: var(--btn-secondary-text);
+  /* Added common button styles directly here to be consistent */
+  padding: 0.5rem 0.75rem; /* Consistent padding */
+  border-radius: 0.375rem; /* Consistent rounded corners */
+  font-size: 0.875rem; /* Consistent text size */
   transition: background-color 0.3s ease, color 0.3s ease;
+  cursor: pointer;
+  border: none; /* Ensure no default border */
+  display: inline-flex; /* Align icon and text */
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem; /* Space between icon and text if any */
 }
 .btn-secondary:hover {
   filter: brightness(90%); /* Universal darken on hover */
@@ -270,14 +290,14 @@ table tbody tr:hover {
   opacity: 1; /* Removed !important as it interferes with variable use */
   pointer-events: auto;
   visibility: visible;
-  display: inline-flex;
   transition: none; /* Removed !important */
-  padding: 0.5rem 0.75rem; /* Consistent padding for all action buttons */
-  border-radius: 0.375rem; /* Consistent rounded corners */
-  font-weight: 500; /* Consistent font weight */
-  align-items: center; /* Vertically align icon and text */
-  gap: 0.25rem; /* Space between icon and text */
-  white-space: nowrap; /* Prevent text wrapping */
+  /* These basic styles are now moved to .btn-primary and .btn-secondary */
+  /* padding: 0.5rem 0.75rem;
+  border-radius: 0.375rem;
+  font-weight: 500;
+  align-items: center;
+  gap: 0.25rem;
+  white-space: nowrap; */
 }
 
 /* Specific button colors based on their classes to match image_0edf60.png */

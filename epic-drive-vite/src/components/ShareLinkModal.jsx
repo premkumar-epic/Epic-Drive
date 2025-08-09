@@ -162,14 +162,11 @@ function ShareLinkModal({
                 key={option.value}
                 onClick={() => handleDurationChange(option.value)}
                 // Apply 'btn-primary' for selected, 'btn-secondary' for others
-                className={`
-                  px-3 py-1 rounded-md text-sm transition-colors duration-200
-                  ${
-                    selectedDuration === option.value
-                      ? "btn-primary" // Use the combined btn-primary class for selected
-                      : "btn-secondary hover:brightness-90" // Use btn-secondary for others, apply hover explicitly
-                  }
-                `}
+                className={
+                  selectedDuration === option.value
+                    ? "btn-primary" // This class should define all primary button styles
+                    : "btn-secondary hover:brightness-90" // This class should define all secondary button styles
+                }
               >
                 {option.label}
               </button>

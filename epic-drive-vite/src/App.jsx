@@ -6,12 +6,6 @@ import CreateNewFolderModal from "./components/CreateNewFolderModal.jsx";
 import ShareLinkModal from "./components/ShareLinkModal.jsx";
 import ToastContainer from "./components/ToastContainer.jsx";
 
-// Global variables that need to be managed as state or passed as props.
-// 's3' will be initialized inside getS3Client and reused.
-let s3;
-let currentBucket = "";
-let currentPrefix = ""; // Current path in the S3 bucket
-
 function App() {
   const [isConnected, setIsConnected] = useState(false);
   const [accessKeyId, setAccessKeyId] = useState("");
@@ -31,8 +25,14 @@ function App() {
   const [sharedFileName, setSharedFileName] = useState(""); // State for file name in share modal
   const [sharedFileKey, setSharedFileKey] = useState(""); // New state for the S3 key of the shared file
 
+  // Converted global 'let' variables to state for better React management
+  const [currentAwsBucket, setCurrentAwsBucket] = useState("");
+  const [currentAwsPrefix, setCurrentAwsPrefix] = useState("");
+
   // Ref for generating unique toast IDs
   const toastIdCounter = useRef(0);
+  // Ref to hold the S3 client instance, managed outside of state to prevent re-instantiation on renders
+  const s3ClientRef = useRef(null);
 
   // Callback to show toast notifications
   const showToast = useCallback((message, type = "info", duration = 3000) => {
@@ -87,7 +87,7 @@ function App() {
 
   // Initializes and returns the S3 client instance
   const getS3Client = useCallback(() => {
-    if (!s3) {
+    if (!s3ClientRef.current) {
       if (!accessKeyId || !secretAccessKey || !region) {
         showToast("AWS credentials or region missing.", "error");
         return null;
@@ -97,9 +97,9 @@ function App() {
         secretAccessKey: secretAccessKey,
         region: region,
       });
-      s3 = new AWS.S3({ apiVersion: "2006-03-01" });
+      s3ClientRef.current = new AWS.S3({ apiVersion: "2006-03-01" });
     }
-    return s3;
+    return s3ClientRef.current;
   }, [accessKeyId, secretAccessKey, region, showToast]);
 
   // Helper function to determine file type category
@@ -182,35 +182,48 @@ function App() {
   // Lists files and folders in the current prefix
   const listFilesInCurrentFolder = useCallback(
     async (
-      prefix = currentPrefix,
-      currentSearchQuery = searchQuery,
-      currentFilterType = filterType
+      prefixToList, // Use passed prefix
+      currentSearchQuery,
+      currentFilterType
     ) => {
-      setFileManagerStatus("Loading files...");
+      console.log(
+        "App: listFilesInCurrentFolder called with prefix:",
+        prefixToList,
+        "search:",
+        currentSearchQuery,
+        "filter:",
+        currentFilterType
+      ); // Debug log
+
+      let loadingTimer;
+      loadingTimer = setTimeout(() => {
+        setFileManagerStatus("Loading files...");
+      }, 200);
+
       const s3Client = getS3Client();
-      if (!s3Client || !currentBucket) {
+      if (!s3Client || !currentAwsBucket) {
+        clearTimeout(loadingTimer);
         setFileManagerStatus("Not connected to S3.");
         return;
       }
 
       try {
         const params = {
-          Bucket: currentBucket,
-          Delimiter: "/", // To get folders
-          Prefix: prefix,
+          Bucket: currentAwsBucket,
+          Delimiter: "/",
+          Prefix: prefixToList,
         };
 
         const data = await s3Client.listObjectsV2(params).promise();
 
         let items = [];
 
-        // Add folders
         if (data.CommonPrefixes) {
           data.CommonPrefixes.forEach((commonPrefix) => {
-            const folderName = commonPrefix.Prefix.replace(prefix, "").replace(
-              "/",
+            const folderName = commonPrefix.Prefix.replace(
+              prefixToList,
               ""
-            );
+            ).replace("/", "");
             if (folderName) {
               items.push({
                 Key: commonPrefix.Prefix,
@@ -223,13 +236,10 @@ function App() {
           });
         }
 
-        // Add files
         if (data.Contents) {
           data.Contents.forEach((content) => {
-            // Exclude the "folder" objects themselves (keys ending with /)
-            // and files that are just the prefix itself (e.g., if prefix is 'myfolder/', and there's a file 'myfolder/')
-            if (content.Key !== prefix && !content.Key.endsWith("/")) {
-              const fileName = content.Key.replace(prefix, "");
+            if (content.Key !== prefixToList && !content.Key.endsWith("/")) {
+              const fileName = content.Key.replace(prefixToList, "");
               items.push({
                 Key: content.Key,
                 Name: fileName,
@@ -241,57 +251,60 @@ function App() {
           });
         }
 
-        setFileList(
-          items
-            .filter((item) =>
-              item.Name.toLowerCase().includes(currentSearchQuery.toLowerCase())
+        const filteredItems = items
+          .filter((item) =>
+            item.Name.toLowerCase().includes(currentSearchQuery.toLowerCase())
+          )
+          .filter((item) => {
+            if (currentFilterType === "all") return true;
+            if (currentFilterType === "folders" && item.Type === "folder")
+              return true;
+            if (
+              currentFilterType === "documents" &&
+              [
+                "document",
+                "text",
+                "spreadsheet",
+                "presentation",
+                "pdf",
+              ].includes(item.Type)
             )
-            .filter((item) => {
-              if (currentFilterType === "all") return true;
-              if (currentFilterType === "folders" && item.Type === "folder")
-                return true;
-              if (
-                currentFilterType === "documents" &&
-                [
-                  "document",
-                  "text",
-                  "spreadsheet",
-                  "presentation",
-                  "pdf",
-                ].includes(item.Type)
-              )
-                return true;
-              if (currentFilterType === "images" && item.Type === "image")
-                return true;
-              if (currentFilterType === "videos" && item.Type === "video")
-                return true;
-              if (currentFilterType === "audio" && item.Type === "audio")
-                return true;
-              if (currentFilterType === "code" && item.Type === "code")
-                return true;
-              if (currentFilterType === "archives" && item.Type === "archive")
-                return true;
-              if (
-                currentFilterType === "other" &&
-                ["other", "unknown"].includes(item.Type)
-              )
-                return true;
-              return false;
-            })
-        );
-        currentPrefix = prefix; // Update global prefix
+              return true;
+            if (currentFilterType === "images" && item.Type === "image")
+              return true;
+            if (currentFilterType === "videos" && item.Type === "video")
+              return true;
+            if (currentFilterType === "audio" && item.Type === "audio")
+              return true;
+            if (currentFilterType === "code" && item.Type === "code")
+              return true;
+            if (currentFilterType === "archives" && item.Type === "archive")
+              return true;
+            if (
+              currentFilterType === "other" &&
+              ["other", "unknown"].includes(item.Type)
+            )
+              return true;
+            return false;
+          });
+
+        setFileList(filteredItems);
+        setCurrentAwsPrefix(prefixToList);
+        clearTimeout(loadingTimer);
         setFileManagerStatus("");
       } catch (error) {
+        clearTimeout(loadingTimer);
         console.error("Error listing files:", error);
         setFileManagerStatus(`Error loading files: ${error.message}`);
         showToast(`Error loading files: ${error.message}`, "error");
       }
     },
-    [getS3Client, showToast, getFileType, searchQuery, filterType]
+    [getS3Client, showToast, getFileType, currentAwsBucket] // Dependencies are correct for this useCallback
   );
 
   // Connects to the S3 bucket
   const connectToS3 = useCallback(async () => {
+    console.log("App: connectToS3 called"); // Debug log
     setStatusMessage("Connecting...");
     showToast("Connecting to S3 bucket...", "info");
     const s3Client = getS3Client();
@@ -303,15 +316,14 @@ function App() {
     }
 
     try {
-      // Use headBucket to check connectivity without listing content
       await s3Client.headBucket({ Bucket: bucketName }).promise();
       setIsConnected(true);
       saveCredentials();
-      currentBucket = bucketName; // Update global bucket name
-      currentPrefix = ""; // Reset path on successful connection
-      setStatusMessage(""); // Clear connection status message
+      setCurrentAwsBucket(bucketName);
+      setCurrentAwsPrefix(""); // Reset path on successful connection
+      setStatusMessage("");
       showToast("Successfully connected to S3 bucket!", "success");
-      await listFilesInCurrentFolder(); // List files after successful connection
+      // REMOVED: listFilesInCurrentFolder call from here. It will now be triggered by the dedicated useEffect.
     } catch (error) {
       console.error("Connection error:", error);
       setIsConnected(false);
@@ -319,22 +331,15 @@ function App() {
       showToast(`Connection failed: ${error.message || error.code}`, "error");
       clearCredentials();
     }
-  }, [
-    bucketName,
-    saveCredentials,
-    clearCredentials,
-    getS3Client,
-    showToast,
-    listFilesInCurrentFolder,
-  ]);
+  }, [bucketName, saveCredentials, clearCredentials, getS3Client, showToast]); // Dependencies updated: removed listFilesInCurrentFolder, searchQuery, filterType
 
   // Disconnects from S3
   const disconnectS3 = useCallback(() => {
     setIsConnected(false);
     clearCredentials();
-    s3 = null; // Clear S3 instance
-    currentBucket = "";
-    currentPrefix = "";
+    s3ClientRef.current = null; // Clear S3 instance in ref
+    setCurrentAwsBucket(""); // Reset state
+    setCurrentAwsPrefix(""); // Reset state
     setFileList([]);
     setStatusMessage("");
     setFileManagerStatus("");
@@ -351,14 +356,14 @@ function App() {
       setFileManagerStatus(`Uploading ${file.name}...`);
       showToast(`Uploading ${file.name}...`, "info");
       const s3Client = getS3Client();
-      if (!s3Client || !currentBucket) {
+      if (!s3Client || !currentAwsBucket) {
         setFileManagerStatus("Not connected to S3.");
         return;
       }
 
-      const uploadPath = currentPrefix + file.name;
+      const uploadPath = currentAwsPrefix + file.name;
       const params = {
-        Bucket: currentBucket,
+        Bucket: currentAwsBucket,
         Key: uploadPath,
         Body: file,
       };
@@ -366,20 +371,31 @@ function App() {
       try {
         await s3Client.upload(params).promise();
         showToast(`Successfully uploaded ${file.name}`, "success");
-        await listFilesInCurrentFolder(); // Refresh list
+        await listFilesInCurrentFolder(
+          currentAwsPrefix,
+          searchQuery,
+          filterType
+        );
       } catch (error) {
         console.error("Upload error:", file.name, error);
         showToast(`Upload failed for ${file.name}: ${error.message}`, "error");
         setFileManagerStatus(`Upload failed: ${error.message}`);
       }
     },
-    [getS3Client, showToast, listFilesInCurrentFolder]
+    [
+      getS3Client,
+      showToast,
+      listFilesInCurrentFolder,
+      currentAwsBucket,
+      currentAwsPrefix,
+      searchQuery,
+      filterType,
+    ]
   );
 
   // Deletes a file or folder from S3
   const deleteFileOrFolder = useCallback(
     async (key, isFolder) => {
-      // Using window.confirm for simplicity, consider a custom modal in production
       if (
         !window.confirm(
           `Are you sure you want to delete ${key.split("/").pop() || key}?`
@@ -391,17 +407,16 @@ function App() {
       setFileManagerStatus(`Deleting ${key}...`);
       showToast(`Deleting ${key}...`, "info");
       const s3Client = getS3Client();
-      if (!s3Client || !currentBucket) {
+      if (!s3Client || !currentAwsBucket) {
         setFileManagerStatus("Not connected to S3.");
         return;
       }
 
       try {
         if (isFolder) {
-          // For folders, we need to list all objects within that prefix and delete them
           const listParams = {
-            Bucket: currentBucket,
-            Prefix: key, // List all objects starting with this prefix
+            Bucket: currentAwsBucket,
+            Prefix: key,
           };
           const listedObjects = await s3Client
             .listObjectsV2(listParams)
@@ -409,23 +424,21 @@ function App() {
 
           if (listedObjects.Contents.length > 0) {
             const deleteParams = {
-              Bucket: currentBucket,
+              Bucket: currentAwsBucket,
               Delete: {
                 Objects: listedObjects.Contents.map(({ Key }) => ({ Key })),
               },
             };
             await s3Client.deleteObjects(deleteParams).promise();
           }
-          // If the folder marker itself needs to be deleted (e.g., if it was an empty folder)
           if (key.endsWith("/")) {
             await s3Client
-              .deleteObject({ Bucket: currentBucket, Key: key })
+              .deleteObject({ Bucket: currentAwsBucket, Key: key })
               .promise();
           }
         } else {
-          // For files
           const params = {
-            Bucket: currentBucket,
+            Bucket: currentAwsBucket,
             Key: key,
           };
           await s3Client.deleteObject(params).promise();
@@ -434,7 +447,11 @@ function App() {
           `Successfully deleted ${key.split("/").pop() || key}.`,
           "success"
         );
-        await listFilesInCurrentFolder(); // Refresh list
+        await listFilesInCurrentFolder(
+          currentAwsPrefix,
+          searchQuery,
+          filterType
+        );
       } catch (error) {
         console.error("Delete error:", error);
         showToast(
@@ -446,7 +463,15 @@ function App() {
         setFileManagerStatus(`Deletion failed: ${error.message}`);
       }
     },
-    [getS3Client, showToast, listFilesInCurrentFolder]
+    [
+      getS3Client,
+      showToast,
+      listFilesInCurrentFolder,
+      currentAwsBucket,
+      currentAwsPrefix,
+      searchQuery,
+      filterType,
+    ]
   );
 
   // Downloads a file from S3
@@ -455,14 +480,14 @@ function App() {
       setFileManagerStatus(`Downloading ${fileName}...`);
       showToast(`Downloading ${fileName}...`, "info");
       const s3Client = getS3Client();
-      if (!s3Client || !currentBucket) {
+      if (!s3Client || !currentAwsBucket) {
         setFileManagerStatus("Not connected to S3.");
         return;
       }
 
       try {
         const params = {
-          Bucket: currentBucket,
+          Bucket: currentAwsBucket,
           Key: key,
         };
         const data = await s3Client.getObject(params).promise();
@@ -484,7 +509,7 @@ function App() {
         setFileManagerStatus(`Download failed: ${error.message}`);
       }
     },
-    [getS3Client, showToast]
+    [getS3Client, showToast, currentAwsBucket]
   );
 
   // Creates a new folder in the current S3 prefix
@@ -495,12 +520,11 @@ function App() {
         return;
       }
       if (folderName.endsWith("/")) {
-        folderName = folderName.slice(0, -1); // Remove trailing slash if present
+        folderName = folderName.slice(0, -1);
       }
 
-      const fullPath = currentPrefix + folderName + "/";
+      const fullPath = currentAwsPrefix + folderName + "/";
 
-      // Check if a folder with the exact name already exists
       if (
         fileList.some((item) => item.Key === fullPath && item.Type === "folder")
       ) {
@@ -511,21 +535,25 @@ function App() {
       setFileManagerStatus(`Creating folder ${folderName}...`);
       showToast(`Creating folder ${folderName}...`, "info");
       const s3Client = getS3Client();
-      if (!s3Client || !currentBucket) {
+      if (!s3Client || !currentAwsBucket) {
         setFileManagerStatus("Not connected to S3.");
         return;
       }
 
       try {
         const params = {
-          Bucket: currentBucket,
+          Bucket: currentAwsBucket,
           Key: fullPath,
-          Body: "", // Empty body for a folder object
+          Body: "",
         };
         await s3Client.putObject(params).promise();
         showToast(`Folder '${folderName}' created successfully.`, "success");
-        setShowCreateFolderModal(false); // Close modal on success
-        await listFilesInCurrentFolder(); // Refresh list
+        setShowCreateFolderModal(false);
+        await listFilesInCurrentFolder(
+          currentAwsPrefix,
+          searchQuery,
+          filterType
+        );
       } catch (error) {
         console.error("Error creating folder:", error);
         showToast(`Failed to create folder: ${error.message}`, "error");
@@ -538,6 +566,10 @@ function App() {
       listFilesInCurrentFolder,
       fileList,
       setShowCreateFolderModal,
+      currentAwsBucket,
+      currentAwsPrefix,
+      searchQuery,
+      filterType,
     ]
   );
 
@@ -549,30 +581,31 @@ function App() {
         return "";
       }
       const s3Client = getS3Client();
-      if (!s3Client || !currentBucket) {
+      if (!s3Client || !currentAwsBucket) {
         return "";
       }
 
       try {
         const params = {
-          Bucket: currentBucket,
+          Bucket: currentAwsBucket,
           Key: key,
-          Expires: durationSeconds, // in seconds (max 7 days = 604800 seconds)
+          Expires: durationSeconds,
         };
         const url = await s3Client.getSignedUrlPromise("getObject", params);
-        showToast("Share link generated successfully!", "success"); // This toast remains
+        showToast("Share link generated successfully!", "success");
         return url;
       } catch (error) {
         console.error("Error generating share link:", error);
-        showToast(`Failed to generate share link: ${error.message}`, "error"); // This toast remains
+        showToast(`Failed to generate share link: ${error.message}`, "error");
         return "";
       }
     },
-    [getS3Client, showToast]
+    [getS3Client, showToast, currentAwsBucket]
   );
 
-  // Effect for initial load and theme preference
+  // Effect for initial load and theme preference (only calls connectToS3 if credentials exist)
   useEffect(() => {
+    console.log("App: useEffect for initial load/theme triggered"); // Debug log
     const savedTheme = localStorage.getItem("theme");
     if (
       savedTheme === "dark" ||
@@ -585,11 +618,27 @@ function App() {
       setThemeIconClass("fas fa-moon mr-2");
     }
 
-    if (loadCredentials()) {
+    // Only attempt to connect if credentials are found AND we are not already connected
+    if (loadCredentials() && !isConnected) {
       setStatusMessage("Attempting to reconnect using saved credentials...");
       connectToS3();
     }
-  }, [loadCredentials, connectToS3]);
+  }, [loadCredentials, connectToS3, isConnected]); // Added isConnected to dependencies
+
+  // NEW: Effect to trigger file listing when connection and bucket are ready, or filter/search changes
+  useEffect(() => {
+    if (isConnected && currentAwsBucket && s3ClientRef.current) {
+      console.log("App: useEffect for file listing triggered."); // Debug log
+      listFilesInCurrentFolder(currentAwsPrefix, searchQuery, filterType);
+    }
+  }, [
+    isConnected,
+    currentAwsBucket,
+    currentAwsPrefix,
+    searchQuery,
+    filterType,
+    listFilesInCurrentFolder,
+  ]);
 
   // Theme toggle handler
   const handleThemeToggle = useCallback(() => {
@@ -600,7 +649,7 @@ function App() {
 
   // Breadcrumbs logic (simplified for React, you'll render this dynamically)
   const getBreadcrumbs = useCallback(() => {
-    const paths = currentPrefix.split("/").filter((p) => p !== "");
+    const paths = currentAwsPrefix.split("/").filter((p) => p !== "");
     let crumbs = [{ name: "Root", prefix: "" }];
     let cumulativePrefix = "";
     paths.forEach((path) => {
@@ -608,23 +657,25 @@ function App() {
       crumbs.push({ name: path, prefix: cumulativePrefix });
     });
     return crumbs;
-  }, []);
+  }, [currentAwsPrefix]);
 
   // Navigates into a folder or back to a parent folder
   const navigateToFolder = useCallback(
     async (prefix) => {
-      currentPrefix = prefix; // Update global prefix
-      setSearchQuery(""); // Clear search on navigation
-      setFilterType("all"); // Reset filter on navigation
-      await listFilesInCurrentFolder(prefix, "", "all"); // Pass empty search and 'all' filter
+      // console.log('App: navigateToFolder called with prefix:', prefix); // Debug log
+      // Do not reset filterType or searchQuery here, let the useEffect handle updates
+      // Instead, explicitly update currentAwsPrefix to trigger the useEffect
+      setCurrentAwsPrefix(prefix);
+      setSearchQuery(""); // Always clear search on navigation
+      setFilterType("all"); // Always reset filter to 'all' on navigation
+      // The file listing will be handled by the dedicated useEffect due to currentAwsPrefix, searchQuery, filterType change
     },
-    [listFilesInCurrentFolder]
+    [] // Dependencies adjusted to only include what's needed for the callback definition
   );
 
   // Handle clicks outside dropdowns (account menu and filter dropdown)
   useEffect(() => {
     const handleClickOutside = (event) => {
-      // Close account menu if clicked outside
       const accountMenuButton = document.getElementById("account-menu-button");
       const accountDropdownMenu = document.getElementById(
         "account-dropdown-menu"
@@ -695,7 +746,7 @@ function App() {
                       className="block px-4 py-2 text-sm text-secondary-pop truncate"
                       role="menuitem"
                     >
-                      {isConnected ? bucketName : "Not Connected"}
+                      {isConnected ? currentAwsBucket : "Not Connected"}{" "}
                     </p>
                     <hr className="border-gray-200 dark:border-gray-600 my-1" />
                     <button
@@ -745,7 +796,7 @@ function App() {
           <FileManagerSection
             fileManagerStatus={fileManagerStatus}
             fileList={fileList}
-            currentPrefix={currentPrefix} // Pass currentPrefix for breadcrumbs and navigation
+            currentPrefix={currentAwsPrefix}
             navigateToFolder={navigateToFolder}
             uploadFile={uploadFile}
             deleteFileOrFolder={deleteFileOrFolder}
@@ -753,15 +804,15 @@ function App() {
             createNewFolder={createNewFolder}
             setShowCreateFolderModal={setShowCreateFolderModal}
             setShowShareModal={setShowShareModal}
-            setSharedFileName={setSharedFileName} // Pass setter for sharedFileName
-            setSharedFileKey={setSharedFileKey} // Pass setter for sharedFileKey
-            listFilesInCurrentFolder={listFilesInCurrentFolder} // Pass for refresh
+            setSharedFileName={setSharedFileName}
+            setSharedFileKey={setSharedFileKey}
+            listFilesInCurrentFolder={listFilesInCurrentFolder}
             searchQuery={searchQuery}
             setSearchQuery={setSearchQuery}
             filterType={filterType}
             setFilterType={setFilterType}
             showToast={showToast}
-            getBreadcrumbs={getBreadcrumbs} // Pass getBreadcrumbs for rendering
+            getBreadcrumbs={getBreadcrumbs}
           />
         )}
       </main>
@@ -778,9 +829,9 @@ function App() {
         <ShareLinkModal
           onClose={() => setShowShareModal(false)}
           generateShareLink={generateShareLink}
-          sharedFileName={sharedFileName} // Pass the state variable
-          sharedFileKey={sharedFileKey} // Pass the state variable
-          showToast={showToast} // Pass showToast to the modal
+          sharedFileName={sharedFileName}
+          sharedFileKey={sharedFileKey}
+          showToast={showToast}
         />
       )}
 
