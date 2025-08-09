@@ -17,426 +17,441 @@
   --file-icon-color: #b3d2e6; /* File icon color (derived from secondary btn) */
   --input-border: #aabccf;
   --placeholder-color: #90a4ee; /* Placeholder text color */
-  --dropdown-bg: #ffffff;
-  --dropdown-border: #d1dde4;
-  --dropdown-item-hover-bg: #f0f5f8;
-  --toast-bg: #333333;
-  --toast-text: #ffffff;
-  --toast-success: #28a745;
-  --toast-error: #dc3545;
-  --modal-overlay: rgba(0, 0, 0, 0.5); /* Modal overlay color */
-  --control-height: 40px; /* Define a consistent height for main controls */
+  --header-bg: #ffffff; /* Explicitly white for header in light mode */
+  --toast-info-bg: #e0f7fa; /* Light cyan */
+  --toast-info-border: #00bcd4; /* Cyan */
+  --toast-success-bg: #e8f5e9; /* Light green */
+  --toast-success-border: #4caf50; /* Green */
+  --toast-error-bg: #ffebee; /* Light red */
+  --toast-error-border: #f44336; /* Red */
+  --toast-warning-bg: #fffde7; /* Light yellow */
+  --toast-warning-border: #ffc107; /* Yellow */
+  --file-row-hover-bg: #f5f8fa; /* Light hover for file rows */
+  --control-height: 42px; /* Standard height for inputs and buttons */
 }
 
-/* Dark Mode Overrides */
+/* Dark Mode Variables */
 body.dark-mode {
-  --bg-primary: #000000; /* Pure Black background */
-  --bg-secondary: #1a1a1a; /* Slightly lighter dark for cards/header */
-  --text-primary: #ebf2f7; /* Light text */
-  --text-secondary: #aabccf; /* Muted light blue-gray for secondary text */
-  --btn-primary-bg: #0357c9; /* Muted deep blue button */
+  --bg-primary: #1a202c; /* Dark slate */
+  --bg-secondary: #2d3748; /* Darker slate for cards/header */
+  --text-primary: #e2e8f0; /* Light gray text */
+  --text-secondary: #a0aec0; /* Muted gray for secondary text */
+  --btn-primary-bg: #4299e1; /* Lighter blue button */
   --btn-primary-text: #ffffff;
-  --btn-secondary-bg: #2c3e50; /* Darker muted blue secondary button */
-  --btn-secondary-text: #ebf2f7;
-  --accent-color: #3399ff; /* Accent Blue for dark mode (used for Download) */
-  --share-color: #218838; /* Darker Green for Share button in dark mode */
-  --border-color: #333333; /* Darker border for dark mode */
-  --footer-bg: #0a0a0a; /* Even darker for footer */
-  --footer-text: #8fa1b4;
-  --folder-icon-color: #3399ff; /* Folder icon color: Matches accent color */
-  --file-icon-color: #2c3e50; /* File icon color (derived from secondary btn) */
-  --input-border: #444444; /* Darker input border */
-  --placeholder-color: #666666; /* Placeholder text color in dark mode */
-  --dropdown-bg: #1a1a1a;
-  --dropdown-border: #333333;
-  --dropdown-item-hover-bg: #2c3e50;
-  --toast-bg: #ebf2f7;
-  --toast-text: #1f3040;
-  --toast-success: #218838;
-  --toast-error: #c82333;
-  --modal-overlay: rgba(0, 0, 0, 0.7); /* Darker modal overlay */
+  --btn-secondary-bg: #4a5568; /* Darker secondary button */
+  --btn-secondary-text: #e2e8f0;
+  --accent-color: #63b3ed; /* Lighter accent blue */
+  --share-color: #68d391; /* Lighter green */
+  --border-color: #4a5568; /* Darker border */
+  --footer-bg: #2d3748; /* Darker footer */
+  --footer-text: #a0aec0;
+  --folder-icon-color: #63b3ed;
+  --file-icon-color: #a0aec0;
+  --input-border: #4a5568;
+  --placeholder-color: #a0aec0;
+  --header-bg: #2d3748; /* Darker header in dark mode */
+  --toast-info-bg: #2a3d4f;
+  --toast-info-border: #4299e1;
+  --toast-success-bg: #2c4f3c;
+  --toast-success-border: #48bb78;
+  --toast-error-bg: #4f2a2a;
+  --toast-error-border: #e53e3e;
+  --toast-warning-bg: #4f412a;
+  --toast-warning-border: #ecc94b;
+  --file-row-hover-bg: #2d3748;
 }
 
+/* Base Body Styles */
 body {
   font-family: "Open Sans", sans-serif;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
   background-color: var(--bg-primary);
   color: var(--text-primary);
   transition: background-color 0.3s ease, color 0.3s ease;
-  display: flex; /* Enable flexbox */
-  flex-direction: column; /* Stack children vertically */
-  min-height: 100vh; /* Ensure body takes at least full viewport height */
+  min-height: 100vh; /* Ensure body takes full viewport height */
+  display: flex;
+  flex-direction: column; /* Enable flex column for sticky footer */
 }
+
+/* Header Styles */
 .header-bg {
-  background-color: var(--bg-secondary);
-  border-bottom: 1px solid var(--border-color);
-  transition: background-color 0.3s ease, border-color 0.3s ease;
+  background-color: var(--header-bg);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05); /* subtle shadow */
+  transition: background-color 0.3s ease;
 }
-.main-content-area {
-  flex-grow: 1; /* Allow main content to grow and push footer down */
+
+/* Container */
+.container {
+  max-width: 1200px;
+  margin-left: auto;
+  margin-right: auto;
+  padding-left: 1rem;
+  padding-right: 1rem;
 }
-.main-card-bg {
-  background-color: var(--bg-secondary);
-  border: 1px solid var(--border-color);
-  transition: background-color 0.3s ease, border-color 0.3s ease;
+
+/* Input Fields */
+.input-field {
+  width: 100%;
+  padding: 0.75rem 1rem;
+  border: 1px solid var(--input-border);
+  border-radius: 0.375rem; /* rounded-md */
+  background-color: var(--bg-primary);
+  color: var(--text-primary);
+  font-size: 1rem;
+  line-height: 1.5;
+  transition: border-color 0.15s ease-in-out, box-shadow 0.15s ease-in-out;
+  height: var(--control-height); /* Standard height */
 }
+
+.input-field::placeholder {
+  color: var(--placeholder-color);
+  opacity: 1; /* Firefox default opacity is lower */
+}
+
+.input-field:focus {
+  border-color: var(--btn-primary-bg);
+  box-shadow: 0 0 0 0.1rem rgba(5, 121, 245, 0.25); /* Subtle focus ring */
+  outline: none;
+}
+
+/* Buttons */
+.btn {
+  padding: 0.75rem 1.5rem;
+  border-radius: 0.375rem; /* rounded-md */
+  font-weight: 600; /* font-semibold */
+  cursor: pointer;
+  transition: all 0.15s ease-in-out;
+  display: inline-flex; /* For icon alignment */
+  align-items: center;
+  justify-content: center;
+  height: var(--control-height); /* Standard height */
+  white-space: nowrap; /* Prevent text wrapping */
+}
+
 .btn-primary {
   background-color: var(--btn-primary-bg);
   color: var(--btn-primary-text);
-  transition: background-color 0.3s ease, color 0.3s ease;
+  border: 1px solid var(--btn-primary-bg);
 }
-.btn-primary:hover:not(:disabled) {
-  filter: brightness(90%); /* Universal darken on hover */
+
+.btn-primary:hover {
+  background-color: var(--btn-primary-bg);
+  opacity: 0.9;
 }
-.btn-primary:disabled {
-  opacity: 0.6;
-  cursor: not-allowed;
-}
+
 .btn-secondary {
   background-color: var(--btn-secondary-bg);
   color: var(--btn-secondary-text);
-  transition: background-color 0.3s ease, color 0.3s ease;
+  border: 1px solid var(--border-color); /* Lighter border for secondary */
 }
+
 .btn-secondary:hover {
-  filter: brightness(90%); /* Universal darken on hover */
+  background-color: var(--btn-secondary-bg);
+  opacity: 0.9;
+  border-color: var(--btn-primary-bg); /* Highlight border on hover */
 }
-.text-accent {
-  color: var(--accent-color);
-  transition: color 0.3s ease;
-}
-.text-share {
-  color: var(--share-color);
-  transition: color 0.3s ease;
-}
-.text-secondary-pop {
-  /* Used for muted text like 'By EPIC' and bucket name in popup */
+
+.btn-icon {
+  background: none;
+  border: none;
+  padding: 0.5rem;
+  font-size: 1.25rem;
   color: var(--text-secondary);
-  transition: color 0.3s ease;
+  cursor: pointer;
+  transition: color 0.2s ease;
 }
-.icon-color {
-  /* General icon color, defaults to accent */
-  color: var(--accent-color);
-  transition: color 0.3s ease;
+
+.btn-icon:hover {
+  color: var(--text-primary);
 }
-.folder-icon {
+
+/* Table Styles */
+table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+th,
+td {
+  padding: 0.75rem 1.5rem;
+  text-align: left;
+  border-bottom: 1px solid var(--border-color);
+  color: var(--text-primary); /* Ensure cell text respects theme */
+}
+
+th {
+  background-color: var(--bg-secondary);
+  font-weight: 600;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  font-size: 0.875rem; /* text-sm */
+}
+
+/* File list row hover effect */
+#file-list tr:hover {
+  background-color: var(--file-row-hover-bg);
+}
+
+/* Specific button/link styles within table */
+.file-actions button {
+  color: var(--text-secondary);
+}
+
+.file-actions button:hover {
+  color: var(--text-primary);
+}
+
+/* Specific icon colors (override Tailwind for theme consistency) */
+.fa-folder {
   color: var(--folder-icon-color);
-  transition: color 0.3s ease;
 }
-.file-icon {
+
+.fa-file-image,
+.fa-file-pdf,
+.fa-file-word,
+.fa-file-excel,
+.fa-file-powerpoint,
+.fa-file-archive,
+.fa-file-audio,
+.fa-file-video,
+.fa-file-code,
+.fa-file-alt,
+.fa-file {
   color: var(--file-icon-color);
-  transition: color 0.3s ease;
 }
-.input-border {
-  border-color: var(--input-border);
-  transition: border-color 0.3s ease;
-}
-.input-border input {
-  color: var(--text-primary);
-  background-color: transparent;
-}
-.input-border input::placeholder {
-  color: var(--placeholder-color);
-}
-.footer-bg {
-  background-color: var(--footer-bg);
-  border-top: 1px solid var(--border-color);
-  color: var(--footer-text);
-  transition: background-color 0.3s ease, border-color 0.3s ease,
-    color 0.3s ease;
-}
-/* Specific text color adjustments for table cells */
-.text-gray-600 {
-  /* For dynamic content that might use this class */
-  color: var(--text-secondary);
-  transition: color 0.3s ease;
-}
-/* Table row hover state */
-table tbody tr:hover {
-  background-color: var(
-    --dropdown-item-hover-bg
-  ); /* Use light hover for subtle table rows */
-}
-/* Dropdown specific styles */
-.dropdown-menu {
-  background-color: var(--dropdown-bg);
-  border: 1px solid var(--dropdown-border);
-  color: var(--text-primary);
-  /* Added/Modified for pop-up effect and z-index */
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15); /* Soft shadow */
-  padding: 0.5rem 0; /* Add vertical padding for items */
-  border-radius: 0.5rem; /* Slightly more rounded corners */
-  transition: background-color 0.3s ease, border-color 0.3s ease,
-    color 0.3s ease, box-shadow 0.3s ease;
-}
-.dropdown-item {
-  padding: 0.5rem 0.8rem; /* Slightly reduced padding */
-  font-size: 0.875rem; /* Ensure text fits */
-}
-.dropdown-item:hover {
-  background-color: var(--dropdown-item-hover-bg);
-}
-/* Toast Notification Styles */
-#toast-container {
+
+/* Modal Styles */
+.modal-overlay {
   position: fixed;
-  top: 20px;
-  right: 20px;
-  z-index: 2000; /* Higher z-index to be above modals */
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-color: rgba(0, 0, 0, 0.6); /* Semi-transparent black overlay */
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 1000; /* Ensure it's on top */
+}
+
+.modal-content {
+  background-color: var(--bg-primary);
+  padding: 2rem;
+  border-radius: 0.5rem;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  width: 90%;
+  max-width: 500px;
+  position: relative;
+  animation: fadeIn 0.3s ease-out;
+}
+
+.modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1.5rem;
+  border-bottom: 1px solid var(--border-color);
+  padding-bottom: 1rem;
+}
+
+.modal-header h2 {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.close-modal-button {
+  background: none;
+  border: none;
+  font-size: 1.5rem;
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: color 0.2s ease;
+}
+
+.close-modal-button:hover {
+  color: var(--text-primary);
+}
+
+.modal-body {
+  margin-bottom: 1.5rem;
+}
+
+.modal-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.75rem;
+  padding-top: 1rem;
+  border-top: 1px solid var(--border-color);
+}
+
+/* Animations */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(-20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Toast Notifications */
+.toast-container {
+  position: fixed;
+  bottom: 1.5rem;
+  right: 1.5rem;
+  z-index: 1000;
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 0.75rem;
+  max-width: 300px;
 }
+
 .toast {
-  background-color: var(--toast-bg);
-  color: var(--toast-text);
-  padding: 12px 20px;
-  border-radius: 8px;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  padding: 1rem 1.25rem;
+  border-radius: 0.375rem;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+  font-size: 0.9rem;
+  border-left: 5px solid;
   opacity: 0;
-  transform: translateY(-20px);
-  animation: fadeInOut 4s forwards;
-  min-width: 250px;
-  display: flex;
-  align-items: center;
-  gap: 10px;
-}
-.toast.success {
-  background-color: var(--toast-success);
-}
-.toast.error {
-  background-color: var(--toast-error);
-}
-.toast.info {
-  background-color: var(--toast-bg); /* Default for info */
-  color: var(--toast-text);
+  animation: slideIn 0.3s forwards, fadeOut 0.5s 4.5s forwards;
 }
 
-@keyframes fadeInOut {
-  0% {
+.toast-info {
+  background-color: var(--toast-info-bg);
+  border-color: var(--toast-info-border);
+  color: var(--text-primary);
+}
+
+.toast-success {
+  background-color: var(--toast-success-bg);
+  border-color: var(--toast-success-border);
+  color: var(--text-primary);
+}
+
+.toast-error {
+  background-color: var(--toast-error-bg);
+  border-color: var(--toast-error-border);
+  color: var(--text-primary);
+}
+
+.toast-warning {
+  background-color: var(--toast-warning-bg);
+  border-color: var(--toast-warning-border);
+  color: var(--text-primary);
+}
+
+@keyframes slideIn {
+  from {
+    transform: translateX(100%);
     opacity: 0;
-    transform: translateY(-20px);
   }
-  10% {
+  to {
+    transform: translateX(0);
     opacity: 1;
-    transform: translateY(0);
   }
-  90% {
+}
+
+@keyframes fadeOut {
+  from {
     opacity: 1;
-    transform: translateY(0);
   }
-  100% {
+  to {
     opacity: 0;
-    transform: translateY(-20px);
+    transform: translateX(100%);
   }
 }
 
-/* Modal styles (using Tailwind's hidden for visibility) */
-.bg-modal-overlay {
-  background-color: var(--modal-overlay);
+/* Custom utility classes */
+.animate-spin-slow {
+  animation: spin 2s linear infinite;
 }
 
-/* Custom styles for file list items (rows) */
-.file-item:hover .file-actions button {
-  opacity: 1;
-  pointer-events: auto;
+@keyframes spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
 }
 
-/* Styling for messages */
-.message {
-  padding: 8px 12px;
-  border-radius: 6px;
-  margin-top: 10px;
-  font-weight: 500;
+.dropdown-item {
+  color: var(--text-primary); /* Ensure dropdown items respect theme */
 }
 
-.message.info {
-  background-color: #e0f2f7; /* Light blue */
-  color: #0d6efd; /* Darker blue */
+.dropdown-item:hover {
+  background-color: var(--bg-secondary);
 }
 
-.message.success {
-  background-color: #d4edda; /* Light green */
-  color: #155724; /* Darker green */
-}
-
-.message.error {
-  background-color: #f8d7da; /* Light red */
-  color: #721c24; /* Darker red */
-}
-
-/* --- File Manager Header Styles (Breadcrumbs & Sync) --- */
+/* File manager header (breadcrumbs and sync) */
 .file-manager-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding-bottom: 1rem; /* Space before the file list/upload section */
-  border-bottom: 1px solid var(--border-color);
-  margin-bottom: 1.5rem; /* Space below the header */
-  flex-wrap: wrap; /* Allow wrapping on smaller screens */
-  gap: 1rem; /* Gap between breadcrumbs and sync button if they wrap */
+  border: 1px solid var(--border-color);
+  border-bottom: none;
+  background-color: var(--bg-secondary);
+  transition: background-color 0.3s ease;
 }
 
-.file-path-breadcrumbs {
-  display: flex;
-  align-items: center;
-  flex-wrap: wrap; /* Allow breadcrumbs to wrap */
-  gap: 4px; /* Space between crumb elements */
-  font-size: 0.95rem;
+/* Breadcrumbs */
+#filePathBreadcrumbs .breadcrumb-item {
   color: var(--text-secondary);
-  flex-grow: 1; /* Allow breadcrumbs to take available space */
-  min-width: 0; /* Allow shrinking */
 }
 
-.crumb-button {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  padding: 6px 10px;
-  border-radius: 6px;
-  background-color: var(--btn-secondary-bg);
-  color: var(--btn-secondary-text);
-  font-weight: 500;
-  transition: background-color 0.2s ease, color 0.2s ease;
-  cursor: pointer;
-  white-space: nowrap; /* Prevent wrapping for button text */
-  flex-shrink: 0; /* Prevent shrinking */
-}
-
-.crumb-button:hover:not(:disabled) {
-  filter: brightness(90%);
-}
-
-.crumb-button:disabled {
-  opacity: 0.6;
-  cursor: not-allowed;
-}
-
-.crumb-button i {
-  font-size: 1rem;
-}
-
-.file-path-breadcrumbs .crumb {
-  padding: 2px 5px;
-  border-radius: 4px;
-  cursor: pointer;
-  transition: background-color 0.2s ease, color 0.2s ease;
-  white-space: nowrap; /* Prevent wrapping for crumb text */
-  overflow: hidden; /* Hide overflow if text is too long */
-  text-overflow: ellipsis; /* Add ellipsis for overflow */
-  max-width: 150px; /* Limit individual crumb width */
-}
-
-.file-path-breadcrumbs .crumb:not(.active):hover {
-  background-color: var(--dropdown-item-hover-bg);
+#filePathBreadcrumbs .breadcrumb-item:last-child {
+  font-weight: 600; /* Current folder in bold */
   color: var(--text-primary);
 }
 
-.file-path-breadcrumbs .crumb.active {
-  font-weight: 600;
-  color: var(--text-primary);
-  cursor: default;
-}
-
-.file-path-breadcrumbs .crumb-separator {
-  color: var(--text-secondary);
-  margin: 0 2px; /* Adjust spacing as needed */
-  flex-shrink: 0; /* Prevent shrinking */
-}
-
-.sync-button {
-  display: inline-flex;
+/* Share link input with copy button */
+.share-link-input-wrapper {
+  display: flex;
   align-items: center;
-  justify-content: center; /* Center the icon */
-  width: 40px; /* Make it a square button */
-  height: 40px; /* Make it a square button */
-  padding: 0; /* Remove padding */
-  border-radius: 8px;
+}
+
+.share-link-input-wrapper input {
+  flex-grow: 1;
+  border-top-right-radius: 0;
+  border-bottom-right-radius: 0;
+}
+
+.share-link-input-wrapper .copy-button {
   background-color: var(--btn-secondary-bg);
   color: var(--btn-secondary-text);
-  font-weight: 500;
-  cursor: pointer;
-  transition: background-color 0.2s ease, color 0.2s ease, transform 0.2s ease;
-  flex-shrink: 0; /* Prevent shrinking */
-}
-
-.sync-button:hover {
-  filter: brightness(90%);
-}
-
-.sync-icon.fa-spin {
-  animation: fa-spin 2s infinite linear;
-}
-
-/* Share modal file name truncation/wrapping */
-#shareLinkModal #sharedFileName {
-  display: inline-block; /* Allows width calculation for wrapping */
-  max-width: calc(
-    100% - 30px
-  ); /* Adjust based on parent padding/close button width */
-  vertical-align: middle; /* Align with "Share File:" text */
-}
-
-/* Ensure close button stays to the right */
-#shareLinkModal .flex.justify-between.items-start {
-  align-items: flex-start; /* Align items to the top to prevent close button moving if text wraps */
-}
-
-/* No underline for links by default */
-a.no-underline {
-  text-decoration: none;
-}
-
-/* Pop-up dropdown specific styles */
-#filterDropdown {
-  position: absolute;
-  top: 100%; /* Position below the filter button */
-  /* Removed 'right: 0;' as JS will control 'left' for direct alignment */
-  z-index: 9999;
-  width: 140px; /* Adjusted fixed width */
-  max-width: max-content; /* Allow it to shrink to content if smaller */
-  min-width: 120px; /* Ensure a minimum width */
-  /* Other dropdown styles are already defined in .dropdown-menu */
-}
-
-/* Ensure consistent height for all main control buttons and inputs */
-.controls-bar button,
-.controls-bar input[type="text"] {
+  border: 1px solid var(--border-color);
+  border-left: none;
+  border-top-right-radius: 0.375rem;
+  border-bottom-right-radius: 0.375rem;
+  padding: 0.75rem 1rem;
   height: var(--control-height);
-  box-sizing: border-box; /* Include padding and border in the element's total width and height */
-  padding-top: 0.5rem;
-  padding-bottom: 0.5rem;
-}
-
-/* Specific adjustments for elements within controls-bar */
-.upload-controls #selectedFileNames {
-  height: var(--control-height); /* Match button height */
-  display: flex; /* Use flexbox to center its text vertically */
-  align-items: center; /* Vertically center the text within the span */
-  padding-top: 0.5rem; /* Ensure consistent vertical padding for text alignment */
-  padding-bottom: 0.5rem;
-}
-
-/* Ensure the search input field within its group fills height and has correct padding */
-.search-input-group {
-  height: var(--control-height); /* Match control height */
   display: flex;
-  align-items: center; /* Ensure internal items are vertically aligned */
+  align-items: center;
+  font-size: 1.2rem;
+  cursor: pointer;
 }
 
-.search-input-group input[type="text"] {
-  height: 100%; /* Fill parent search-input-group height */
-  padding-top: 0.5rem;
-  padding-bottom: 0.5rem;
+.share-link-input-wrapper .copy-button:hover {
+  color: var(--btn-primary-bg);
 }
 
-/* Main controls bar styling (reinforcing alignment) */
-.controls-bar {
+.duration-buttons {
   display: flex;
-  justify-content: space-between;
-  align-items: center; /* Crucial for vertical alignment of the main groups */
-  margin-bottom: 1.5rem; /* Space below the controls bar */
-  flex-wrap: wrap; /* Allow wrapping on smaller screens */
-  gap: 1rem; /* Space between main control groups when wrapping */
+  gap: 0.5rem;
+  flex-wrap: wrap; /* Allow buttons to wrap */
+}
+
+.duration-buttons .btn {
+  flex: 1; /* Allow buttons to grow and shrink */
+  min-width: 80px; /* Minimum width for buttons */
+}
+
+/* Footer styles */
+footer {
+  background-color: var(--footer-bg);
+  color: var(--footer-text);
+  padding: 1.5rem 0;
+  text-align: center;
+  margin-top: auto; /* Push footer to the bottom */
 }
 
 /* Adjustments for small screens (from previous snippets, re-verified) */
@@ -453,18 +468,16 @@ a.no-underline {
     min-width: unset;
     width: 100%;
   }
-  .upload-controls button,
-  .search-filter-controls button {
-    width: 100%; /* Full width for buttons */
-  }
-  .search-input-group {
+  .search-filter-controls .search-input-group {
     width: 100%;
   }
-  .search-button {
-    width: auto; /* Allow auto width for the icon button */
-    flex-shrink: 0;
+  .search-filter-controls .search-input-group input {
+    width: 100%; /* Fill the group */
   }
-  .filter-button {
-    width: 100%; /* Full width for filter button */
+  .search-filter-controls button {
+    width: 100%;
+  }
+  .modal-content {
+    padding: 1rem;
   }
 }

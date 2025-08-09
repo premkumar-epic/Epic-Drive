@@ -23,456 +23,424 @@
           <h1 class="text-4xl font-bold" style="color: var(--text-primary)">
             Epic-Drive
             <span
-              class="text-sm font-normal text-gray-500"
-              style="color: var(--text-secondary)"
-              ><a
-                href="https://premkumar-epic.github.io/premkumar/"
-                target="_blank"
-                class="no-underline"
-                style="color: inherit"
-              >
-                By EPIC
-              </a></span
+              class="text-sm font-semibold text-text-secondary align-top ml-1"
+              >S3 File Manager</span
             >
           </h1>
         </div>
-        <nav class="flex items-center space-x-4">
-          <div class="relative" id="account-icon-container">
+        <div class="flex items-center space-x-4">
+          <div id="accountIconContainer" class="relative">
             <button
-              id="account-menu-button"
-              class="px-3 py-2 rounded-full text-accent hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors duration-200"
+              id="accountMenuButton"
+              class="text-text-primary text-2xl focus:outline-none"
+              title="Account Settings"
             >
-              <i class="fas fa-user-circle text-3xl"></i>
+              <i class="fas fa-user-circle"></i>
             </button>
             <div
-              id="account-dropdown-menu"
-              class="absolute right-0 mt-2 w-48 rounded-md shadow-lg dropdown-menu hidden"
+              id="accountDropdownMenu"
+              class="absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg py-1 z-20 hidden"
             >
               <div
-                class="py-1"
-                role="menu"
-                aria-orientation="vertical"
-                aria-labelledby="account-menu-button"
+                class="block px-4 py-2 text-sm text-gray-700"
+                id="popupBucketName"
               >
-                <p
-                  id="popupBucketName"
-                  class="block px-4 py-2 text-sm text-secondary-pop truncate"
-                  role="menuitem"
-                ></p>
-                <hr class="border-gray-200 dark:border-gray-600 my-1" />
-                <button
-                  id="theme-toggle-dropdown"
-                  class="block w-full text-left px-4 py-2 text-sm dropdown-item"
-                  role="menuitem"
-                >
-                  <i id="theme-icon-dropdown" class="fas fa-moon mr-2"></i>
-                  Toggle Theme
-                </button>
-                <button
-                  id="disconnectButton"
-                  class="block w-full text-left px-4 py-2 text-sm dropdown-item text-red-600 hover:bg-red-100 dark:hover:bg-red-900"
-                  role="menuitem"
-                >
-                  <i class="fas fa-sign-out-alt mr-2"></i> Disconnect
-                </button>
+                Not Connected
               </div>
+              <button
+                id="themeToggleDropdown"
+                class="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+              >
+                <i id="themeIconDropdown" class="fas fa-moon mr-2"></i>Toggle
+                Theme
+              </button>
+              <button
+                id="disconnectButton"
+                class="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+              >
+                <i class="fas fa-sign-out-alt mr-2"></i>Disconnect
+              </button>
             </div>
           </div>
-        </nav>
+        </div>
       </div>
     </header>
 
-    <main class="container mx-auto p-4 md:p-8 main-content-area flex-grow">
+    <main class="flex-grow">
       <section
         id="connection-section"
-        class="main-card-bg rounded-xl shadow-lg p-6 md:p-8 space-y-4 max-w-2xl mx-auto"
+        class="container mx-auto p-6 bg-white rounded-lg shadow-md mt-10"
       >
-        <h2
-          class="text-2xl font-semibold text-center"
-          style="color: var(--text-primary)"
-        >
-          Connect to S3 Bucket
+        <h2 class="text-2xl font-bold text-text-primary mb-6">
+          Connect to AWS S3
         </h2>
-        <div class="grid grid-cols-1 gap-4">
-          <div>
-            <label
-              for="accessKeyId"
-              class="block text-sm font-medium text-secondary-pop mb-1"
-              >Access Key ID:</label
-            >
-            <input
-              type="text"
-              id="accessKeyId"
-              class="w-full px-4 py-2 border input-border rounded-lg focus:outline-none focus:ring-2 focus:ring-accent"
-              placeholder="Your AWS Access Key ID"
-            />
-          </div>
-          <div>
-            <label
-              for="secretAccessKey"
-              class="block text-sm font-medium text-secondary-pop mb-1"
-              >Secret Access Key:</label
-            >
-            <input
-              type="password"
-              id="secretAccessKey"
-              class="w-full px-4 py-2 border input-border rounded-lg focus:outline-none focus:ring-2 focus:ring-accent"
-              placeholder="Your AWS Secret Access Key"
-            />
-          </div>
-          <div>
-            <label
-              for="region"
-              class="block text-sm font-medium text-secondary-pop mb-1"
-              >Region:</label
-            >
-            <input
-              type="text"
-              id="region"
-              class="w-full px-4 py-2 border input-border rounded-lg focus:outline-none focus:ring-2 focus:ring-accent"
-              placeholder="e.g., us-east-1"
-            />
-          </div>
-          <div>
-            <label
-              for="bucketName"
-              class="block text-sm font-medium text-secondary-pop mb-1"
-              >Bucket Name:</label
-            >
-            <input
-              type="text"
-              id="bucketName"
-              class="w-full px-4 py-2 border input-border rounded-lg focus:outline-none focus:ring-2 focus:ring-accent"
-              placeholder="Your S3 Bucket Name"
-            />
-          </div>
+        <div class="mb-4">
+          <label
+            for="accessKeyId"
+            class="block text-text-secondary text-sm font-bold mb-2"
+            >Access Key ID:</label
+          >
+          <input
+            type="text"
+            id="accessKeyId"
+            class="input-field"
+            placeholder="Enter your AWS Access Key ID"
+          />
         </div>
-        <button
-          id="connectButton"
-          class="btn-primary w-full py-2 rounded-lg font-semibold transition-colors duration-200"
-        >
-          Connect
+        <div class="mb-4">
+          <label
+            for="secretAccessKey"
+            class="block text-text-secondary text-sm font-bold mb-2"
+            >Secret Access Key:</label
+          >
+          <input
+            type="password"
+            id="secretAccessKey"
+            class="input-field"
+            placeholder="Enter your AWS Secret Access Key"
+          />
+        </div>
+        <div class="mb-4">
+          <label
+            for="region"
+            class="block text-text-secondary text-sm font-bold mb-2"
+            >Region:</label
+          >
+          <input
+            type="text"
+            id="region"
+            class="input-field"
+            placeholder="e.g., us-east-1"
+          />
+        </div>
+        <div class="mb-6">
+          <label
+            for="bucketName"
+            class="block text-text-secondary text-sm font-bold mb-2"
+            >Bucket Name:</label
+          >
+          <input
+            type="text"
+            id="bucketName"
+            class="input-field"
+            placeholder="Enter your S3 bucket name"
+          />
+        </div>
+        <button id="connectButton" class="btn btn-primary w-full">
+          Connect to S3
         </button>
-        <p id="statusMessage" class="message text-center hidden"></p>
+        <p
+          id="statusMessage"
+          class="mt-4 text-center text-sm text-text-secondary"
+        ></p>
       </section>
 
       <section
         id="file-manager-section"
-        class="main-card-bg rounded-xl shadow-lg p-6 md:p-8 mt-8 hidden"
+        class="container mx-auto p-6 bg-white rounded-lg shadow-md mt-10 hidden"
       >
-        <p id="fileManagerStatus" class="message text-center mb-4 hidden"></p>
+        <div
+          class="controls-bar flex justify-between items-center mb-6 flex-wrap gap-4"
+        >
+          <div class="upload-controls flex items-center space-x-3">
+            <label class="btn btn-secondary cursor-pointer">
+              <span>Upload File</span>
+              <input type="file" id="fileUploadInput" multiple class="hidden" />
+            </label>
+            <button id="uploadButton" class="btn btn-primary hidden">
+              Confirm Upload
+            </button>
+            <button id="newFolderButton" class="btn btn-secondary">
+              <i class="fas fa-folder-plus mr-2"></i>New Folder
+            </button>
+          </div>
 
-        <div class="file-manager-header">
-          <div id="file-path-breadcrumbs" class="file-path-breadcrumbs"></div>
-          <button
-            id="syncStatusButton"
-            class="sync-button"
-            title="Files are up-to-date"
+          <div
+            class="search-filter-controls flex items-center space-x-3 ml-auto"
           >
-            <i class="fas fa-sync-alt sync-icon"></i>
-          </button>
+            <div class="search-input-group relative flex items-center">
+              <input
+                type="text"
+                id="searchFilesInput"
+                placeholder="Search files..."
+                class="input-field pl-10 pr-4"
+              />
+              <span
+                class="absolute left-3 text-text-secondary flex items-center justify-center h-full"
+              >
+                <i class="fas fa-search"></i>
+              </span>
+            </div>
+            <button id="searchButton" class="btn btn-primary">Search</button>
+
+            <div class="relative">
+              <button id="filterButton" class="btn btn-secondary">
+                <span class="mr-2">All Files</span>
+                <i class="fas fa-chevron-down"></i>
+              </button>
+              <div
+                id="filterDropdown"
+                class="absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg py-1 z-20 hidden"
+              >
+                <button
+                  class="block w-full text-left px-4 py-2 text-sm dropdown-item filter-option"
+                  data-filter="all"
+                  role="menuitem"
+                >
+                  All Files
+                </button>
+                <button
+                  class="block w-full text-left px-4 py-2 text-sm dropdown-item filter-option"
+                  data-filter="documents"
+                  role="menuitem"
+                >
+                  Documents
+                </button>
+                <button
+                  class="block w-full text-left px-4 py-2 text-sm dropdown-item filter-option"
+                  data-filter="images"
+                  role="menuitem"
+                >
+                  Images
+                </button>
+                <button
+                  class="block w-full text-left px-4 py-2 text-sm dropdown-item filter-option"
+                  data-filter="videos"
+                  role="menuitem"
+                >
+                  Videos
+                </button>
+                <button
+                  class="block w-full text-left px-4 py-2 text-sm dropdown-item filter-option"
+                  data-filter="audio"
+                  role="menuitem"
+                >
+                  Audio
+                </button>
+                <button
+                  class="block w-full text-left px-4 py-2 text-sm dropdown-item filter-option"
+                  data-filter="code"
+                  role="menuitem"
+                >
+                  Code
+                </button>
+                <button
+                  class="block w-full text-left px-4 py-2 text-sm dropdown-item filter-option"
+                  data-filter="archives"
+                  role="menuitem"
+                >
+                  Archives
+                </button>
+                <button
+                  class="block w-full text-left px-4 py-2 text-sm dropdown-item filter-option"
+                  data-filter="other"
+                  role="menuitem"
+                >
+                  Other
+                </button>
+              </div>
+            </div>
+          </div>
         </div>
 
         <div
-          class="flex items-center gap-4 mb-4 flex-wrap md:flex-nowrap overflow-x-auto pb-2"
+          class="file-manager-header bg-gray-100 p-3 rounded-t-lg flex items-center justify-between flex-wrap gap-2"
         >
-          <button
-            id="uploadButton"
-            class="btn-primary px-4 py-2 rounded-lg font-medium flex items-center space-x-2 transition-colors duration-200 whitespace-nowrap"
-          >
-            <i class="fas fa-upload"></i>
-            <span>Upload</span>
-          </button>
-          <input type="file" id="fileUploadInput" multiple class="hidden" />
-
-          <button
-            id="newFolderButton"
-            class="btn-primary px-4 py-2 rounded-lg font-medium flex items-center space-x-2 transition-colors duration-200 whitespace-nowrap"
-          >
-            <i class="fas fa-folder-plus"></i>
-            <span>New Folder</span>
-          </button>
-          <div
-            class="flex-grow flex items-center border input-border rounded-lg overflow-hidden min-w-[200px]"
-          >
-            <input
-              type="text"
-              id="searchFilesInput"
-              placeholder="Search files and folders..."
-              class="flex-grow px-4 py-2 outline-none"
-              style="color: var(--text-primary)"
-            />
+          <div class="flex items-center gap-2">
             <button
-              id="searchButton"
-              class="px-4 py-2"
-              style="color: var(--text-secondary)"
+              id="backButton"
+              class="btn-icon text-text-secondary hover:text-text-primary"
+              title="Go Back"
             >
-              <i class="fas fa-search"></i>
+              <i class="fas fa-arrow-left"></i>
             </button>
+            <nav id="filePathBreadcrumbs" class="text-sm text-text-secondary">
+              <span class="breadcrumb-item">/</span>
+            </nav>
           </div>
-          <div>
-            <button
-              id="filterButton"
-              class="btn-secondary px-4 py-2 rounded-lg font-medium flex items-center space-x-2 transition-colors duration-200 whitespace-nowrap"
-            >
-              <i class="fas fa-filter"></i>
-              <span>Filter</span>
-              <i class="fas fa-caret-down ml-2"></i>
-            </button>
-          </div>
-        </div>
-
-        <div class="mb-4">
           <button
-            id="backButton"
-            class="crumb-button"
-            title="Go back to parent folder"
-            disabled
+            id="syncStatusButton"
+            class="text-sm text-text-secondary hover:text-text-primary flex items-center gap-1"
+            title="Sync Status"
           >
-            <i class="fas fa-arrow-left"></i><span>Back</span>
+            <i
+              id="syncStatusIcon"
+              class="fas fa-sync-alt animate-spin-slow"
+            ></i>
+            <span>Syncing...</span>
           </button>
         </div>
 
-        <div class="overflow-x-auto" id="file-list">
-          <table
-            class="min-w-full divide-y"
-            style="border-color: var(--border-color)"
-          >
+        <div class="overflow-x-auto">
+          <table class="min-w-full bg-white">
+            <thead>
+              <tr
+                class="bg-gray-200 text-text-secondary uppercase text-sm leading-normal"
+              >
+                <th class="py-3 px-6 text-left">Name</th>
+                <th class="py-3 px-6 text-left">Type</th>
+                <th class="py-3 px-6 text-left">Size</th>
+                <th class="py-3 px-6 text-left">Last Modified</th>
+                <th class="py-3 px-6 text-center">Actions</th>
+              </tr>
+            </thead>
             <tbody
-              class="divide-y"
-              style="
-                background-color: var(--bg-secondary);
-                border-color: var(--border-color);
-              "
-            >
-              <tr></tr>
-            </tbody>
+              id="file-list"
+              class="text-text-primary text-sm font-light"
+            ></tbody>
           </table>
         </div>
+        <p
+          id="fileManagerStatus"
+          class="mt-4 text-center text-sm text-text-secondary"
+        ></p>
       </section>
+    </main>
 
-      <div
-        id="createNewFolderModal"
-        class="fixed inset-0 bg-modal-overlay flex items-center justify-center p-4 hidden"
-        style="z-index: 1000"
-      >
-        <div class="main-card-bg rounded-lg shadow-xl p-6 w-full max-w-sm">
-          <h3
-            class="text-lg font-semibold mb-4"
-            style="color: var(--text-primary)"
+    <div
+      id="createNewFolderModal"
+      class="modal-overlay hidden"
+      aria-labelledby="new-folder-modal-title"
+      role="dialog"
+      aria-modal="true"
+    >
+      <div class="modal-content">
+        <div class="modal-header">
+          <h2 id="new-folder-modal-title">Create New Folder</h2>
+          <button class="close-modal-button" id="createFolderCancelButton">
+            <i class="fas fa-times"></i>
+          </button>
+        </div>
+        <div class="modal-body">
+          <label
+            for="newFolderNameInput"
+            class="block text-sm font-medium text-text-secondary mb-2"
+            >Folder Name:</label
           >
-            Create New Folder
-          </h3>
           <input
             type="text"
             id="newFolderNameInput"
-            class="w-full px-4 py-2 border input-border rounded-lg focus:outline-none focus:ring-2 focus:ring-accent mb-4"
-            placeholder="Folder Name"
+            class="input-field mb-4"
+            placeholder="Enter new folder name"
           />
-          <div class="flex justify-end space-x-3">
-            <button
-              id="createFolderCancelButton"
-              class="btn-secondary px-4 py-2 rounded-lg font-medium"
-            >
-              Cancel
-            </button>
-            <button
-              id="createFolderConfirmButton"
-              class="btn-primary px-4 py-2 rounded-lg font-medium"
-            >
-              Create
-            </button>
-          </div>
         </div>
-      </div>
-
-      <div
-        id="shareLinkModal"
-        class="fixed inset-0 bg-modal-overlay flex items-center justify-center p-4 hidden"
-        style="z-index: 1000"
-      >
-        <div class="main-card-bg rounded-lg shadow-xl p-6 w-full max-w-md">
-          <div class="flex justify-between items-start mb-4">
-            <h3
-              class="text-lg font-semibold flex-grow-0 break-all"
-              style="color: var(--text-primary)"
-            >
-              Share File: <span id="sharedFileName" class="break-words"></span>
-            </h3>
-            <button
-              id="closeShareModal"
-              class="text-secondary-pop text-xl ml-4"
-            >
-              <i class="fas fa-times"></i>
-            </button>
-          </div>
-          <div class="mb-4">
-            <label
-              for="generatedShareLink"
-              class="block text-sm font-medium text-secondary-pop mb-1"
-              >Shareable Link:</label
-            >
-            <div class="flex">
-              <input
-                type="text"
-                id="generatedShareLink"
-                class="w-full px-4 py-2 border input-border rounded-l-lg focus:outline-none focus:ring-2 focus:ring-accent"
-                readonly
-                value="Select duration to generate link"
-              />
-              <button
-                id="copyShareLinkButton"
-                class="btn-primary px-4 py-2 rounded-r-lg font-medium"
-              >
-                Copy
-              </button>
-            </div>
-          </div>
-          <div class="mb-4">
-            <label class="block text-sm font-medium text-secondary-pop mb-1"
-              >Link Expiration:</label
-            >
-            <div id="durationButtons" class="flex flex-wrap gap-2">
-              <button
-                data-duration="900"
-                class="btn-secondary px-3 py-1 rounded-md text-sm"
-              >
-                15 Mins
-              </button>
-              <button
-                data-duration="3600"
-                class="btn-secondary px-3 py-1 rounded-md text-sm"
-              >
-                1 Hour
-              </button>
-              <button
-                data-duration="86400"
-                class="btn-secondary px-3 py-1 rounded-md text-sm"
-              >
-                1 Day
-              </button>
-              <button
-                data-duration="259200"
-                class="btn-secondary px-3 py-1 rounded-md text-sm"
-              >
-                3 Days
-              </button>
-              <button
-                data-duration="432000"
-                class="btn-secondary px-3 py-1 rounded-md text-sm"
-              >
-                5 Days
-              </button>
-              <button
-                data-duration="604800"
-                class="btn-secondary px-3 py-1 rounded-md text-sm"
-              >
-                7 Days (MAX)
-              </button>
-            </div>
-          </div>
-          <button
-            id="newShareLinkButton"
-            class="btn-primary w-full py-2 rounded-lg font-semibold transition-colors duration-200"
-            disabled
-          >
-            Generate New Link
+        <div class="modal-footer">
+          <button class="btn btn-secondary" id="createFolderCancelButton">
+            Cancel
+          </button>
+          <button class="btn btn-primary" id="createFolderConfirmButton">
+            Create Folder
           </button>
         </div>
       </div>
-    </main>
-
-    <footer class="footer-bg py-4 text-center text-sm">
-      <div class="container mx-auto px-4">
-        &copy; 2025 Epic-Drive. All rights reserved. <br />
-        Support this project:
-        <a
-          href="https://buymeacoffee.com/premkumar.dev"
-          target="_blank"
-          class="text-accent hover:underline"
-          >Buy me a Coffee</a
-        >
-      </div>
-    </footer>
-
-    <div id="toast-container"></div>
+    </div>
 
     <div
-      id="filterDropdown"
-      class="w-48 rounded-md shadow-lg dropdown-menu hidden z-[9999]"
-      style="position: absolute"
+      id="shareLinkModal"
+      class="modal-overlay hidden"
+      aria-labelledby="share-modal-title"
+      role="dialog"
+      aria-modal="true"
     >
-      <div
-        class="py-1"
-        role="menu"
-        aria-orientation="vertical"
-        aria-labelledby="filterButton"
-      >
-        <button
-          class="block w-full text-left px-4 py-2 text-sm dropdown-item filter-option"
-          data-filter="all"
-          role="menuitem"
-        >
-          All Files
-        </button>
-        <button
-          class="block w-full text-left px-4 py-2 text-sm dropdown-item filter-option"
-          data-filter="folders"
-          role="menuitem"
-        >
-          Folders
-        </button>
-        <button
-          class="block w-full text-left px-4 py-2 text-sm dropdown-item filter-option"
-          data-filter="documents"
-          role="menuitem"
-        >
-          Documents
-        </button>
-        <button
-          class="block w-full text-left px-4 py-2 text-sm dropdown-item filter-option"
-          data-filter="images"
-          role="menuitem"
-        >
-          Images
-        </button>
-        <button
-          class="block w-full text-left px-4 py-2 text-sm dropdown-item filter-option"
-          data-filter="videos"
-          role="menuitem"
-        >
-          Videos
-        </button>
-        <button
-          class="block w-full text-left px-4 py-2 text-sm dropdown-item filter-option"
-          data-filter="audio"
-          role="menuitem"
-        >
-          Audio
-        </button>
-        <button
-          class="block w-full text-left px-4 py-2 text-sm dropdown-item filter-option"
-          data-filter="code"
-          role="menuitem"
-        >
-          Code
-        </button>
-        <button
-          class="block w-full text-left px-4 py-2 text-sm dropdown-item filter-option"
-          data-filter="archives"
-          role="menuitem"
-        >
-          Archives
-        </button>
-        <button
-          class="block w-full text-left px-4 py-2 text-sm dropdown-item filter-option"
-          data-filter="other"
-          role="menuitem"
-        >
-          Other
-        </button>
+      <div class="modal-content">
+        <div class="modal-header">
+          <h2 id="share-modal-title">Share File</h2>
+          <button class="close-modal-button" id="closeShareModalButton">
+            <i class="fas fa-times"></i>
+          </button>
+        </div>
+        <div class="modal-body">
+          <p class="text-text-primary mb-4">
+            Generate a pre-signed URL to share this file.
+          </p>
+          <div class="share-link-input-wrapper mb-4">
+            <input
+              type="text"
+              id="generatedShareLinkInput"
+              class="input-field flex-grow"
+              readonly
+              placeholder="Generated link will appear here"
+            />
+            <button id="copyShareLinkButton" class="copy-button ml-2">
+              <i class="fas fa-copy"></i>
+            </button>
+          </div>
+          <label
+            for="expiryTime"
+            class="block text-sm font-medium text-text-secondary mb-2"
+            >Link Expiry:</label
+          >
+          <div class="duration-buttons mb-4">
+            <button class="btn btn-secondary" data-duration="60">1 Min</button>
+            <button class="btn btn-secondary" data-duration="3600">
+              1 Hour
+            </button>
+            <button class="btn btn-secondary" data-duration="86400">
+              1 Day
+            </button>
+            <button class="btn btn-secondary" data-duration="604800">
+              7 Days
+            </button>
+          </div>
+          <button id="generateLinkButton" class="btn btn-primary w-full">
+            Generate Link
+          </button>
+        </div>
       </div>
     </div>
+
+    <div
+      id="duplicateFileModal"
+      class="modal-overlay hidden"
+      aria-labelledby="duplicate-modal-title"
+      role="dialog"
+      aria-modal="true"
+    >
+      <div class="modal-content">
+        <div class="modal-header">
+          <h2 id="duplicate-modal-title">File Already Exists</h2>
+          <button class="close-modal-button" id="duplicateCancelButton">
+            <i class="fas fa-times"></i>
+          </button>
+        </div>
+        <div class="modal-body">
+          <p class="text-text-primary mb-4">
+            A file named "<strong id="fileNameInModal"></strong>" already exists
+            in this location. What would you like to do?
+          </p>
+          <label
+            for="newFileNameInput"
+            class="block text-sm font-medium text-text-secondary mb-2"
+            >Rename to:</label
+          >
+          <input
+            type="text"
+            id="newFileNameInput"
+            class="input-field mb-4"
+            placeholder="Enter new file name"
+          />
+        </div>
+        <div class="modal-footer">
+          <button class="btn btn-secondary" id="duplicateCancelButton">
+            Cancel
+          </button>
+          <button class="btn btn-secondary" id="duplicateRenameButton">
+            Rename
+          </button>
+          <button class="btn btn-primary" id="duplicateReplaceButton">
+            Replace Existing
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <div id="toast-container" class="toast-container"></div>
+
+    <footer class="footer-bg py-4 mt-auto">
+      <div class="container mx-auto text-center text-footer-text">
+        <p>&copy; 2023 Epic-Drive. All rights reserved.</p>
+      </div>
+    </footer>
 
     <script src="script.js"></script>
   </body>

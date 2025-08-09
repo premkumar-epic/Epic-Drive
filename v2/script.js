@@ -1,986 +1,1184 @@
-// --- Global Variables & DOM Elements ---
-const accessKeyIdInput = document.getElementById("accessKeyId");
-const secretAccessKeyInput = document.getElementById("secretAccessKey");
-const regionInput = document.getElementById("region");
-const bucketNameInput = document.getElementById("bucketName");
-const connectButton = document.getElementById("connectButton");
-const statusMessage = document.getElementById("statusMessage"); // Persistent connection status
-const connectionSection = document.getElementById("connection-section");
-const fileManagerSection = document.getElementById("file-manager-section");
-const fileListContainer = document.getElementById("file-list");
-const fileManagerStatus = document.getElementById("fileManagerStatus"); // Persistent file manager status
+// --- Global Variables (will be assigned after DOMContentLoaded) ---
+let accessKeyIdInput;
+let secretAccessKeyInput;
+let regionInput;
+let bucketNameInput;
+let connectButton;
+let statusMessage; // Persistent connection status
+let connectionSection;
+let fileManagerSection;
+let fileListContainer;
+let fileManagerStatus; // Persistent file manager status
 
-const fileUploadInput = document.getElementById("fileUploadInput");
-const uploadButton = document.getElementById("uploadButton");
+let fileUploadInput;
+let uploadButton;
 
 // Moved "Create New Folder" to a modal
-const newFolderButton = document.getElementById("newFolderButton");
-const createNewFolderModal = document.getElementById("createNewFolderModal");
-const newFolderNameInput = document.getElementById("newFolderNameInput");
-const createFolderConfirmButton = document.getElementById(
-  "createFolderConfirmButton"
-);
-const createFolderCancelButton = document.getElementById(
-  "createFolderCancelButton"
-);
+let newFolderButton;
+let createNewFolderModal;
+let newFolderNameInput;
+let createFolderConfirmButton;
+let createFolderCancelButton;
 
 // Search and Filter
-const searchFilesInput = document.getElementById("searchFilesInput");
-const searchButton = document.getElementById("searchButton");
-const filterButton = document.getElementById("filterButton"); // Placeholder for future filter logic
-const filterDropdown = document.getElementById("filterDropdown"); // New: Filter dropdown
-const filterOptions = document.querySelectorAll(".filter-option"); // New: Filter options
+let searchFilesInput;
+let searchButton;
+let filterButton; // Placeholder for future filter logic
+let filterDropdown; // New: Filter dropdown
+let filterOptions; // New: Filter options
 
 // New DOM elements for header/account menu
-const accountMenuButton = document.getElementById("account-menu-button");
-const accountDropdownMenu = document.getElementById("account-dropdown-menu");
-const popupBucketName = document.getElementById("popupBucketName");
-const disconnectButton = document.getElementById("disconnectButton");
-const themeToggleDropdown = document.getElementById("theme-toggle-dropdown");
-const themeIconDropdown = document.getElementById("theme-icon-dropdown");
-const accountIconContainer = document.getElementById("account-icon-container");
+let accountMenuButton;
+let accountDropdownMenu;
+let popupBucketName;
+let disconnectButton;
+let themeToggleDropdown;
+let themeIconDropdown;
+let accountIconContainer;
 
 // Elements for new file manager header (breadcrumbs & sync)
-const filePathBreadcrumbs = document.getElementById("file-path-breadcrumbs");
-const syncStatusButton = document.getElementById("syncStatusButton");
-const syncStatusIcon = syncStatusButton.querySelector(".sync-icon");
-const backButton = document.getElementById("backButton"); // New back button, now on top of table
+let filePathBreadcrumbs;
+let syncStatusButton;
+let syncStatusIcon;
+let backButton; // New back button, now on top of table
 
 // --- Toast Notification Container ---
-const toastContainer = document.getElementById("toast-container");
+let toastContainer;
 
 // --- Share Link Modal ---
-const shareLinkModal = document.getElementById("shareLinkModal");
-const generatedShareLinkInput = document.getElementById("generatedShareLink");
-const copyShareLinkButton = document.getElementById("copyShareLinkButton");
-const closeShareModalButton = document.getElementById("closeShareModal");
-const durationButtonsContainer = document.getElementById("durationButtons");
-const sharedFileNameSpan = document.getElementById("sharedFileName");
-const newShareLinkButton = document.getElementById("newShareLinkButton");
+let shareLinkModal;
+let generatedShareLinkInput;
+let copyShareLinkButton;
+let closeShareModalButton;
 
+// --- Duplicate File Modal ---
+let duplicateFileModal;
+let fileNameInModal;
+let newFileNameInputDuplicate; // Renamed to avoid conflict
+let duplicateCancelButton; // Re-using for both close and cancel
+let duplicateRenameButton;
+let duplicateReplaceButton;
+
+// --- Global State Variables ---
 let s3;
 let currentBucket;
-let currentPrefix = ""; // Always ends with a '/' for folders or empty for root
-let fileKeyToShare = ""; // Stores the key of the file currently being shared
-let initialConnectionLoad = true; // Flag for initial file listing after connection
-let currentFilter = "all"; // New: Default filter setting
+let currentPrefix = ""; // Represents the current "folder"
+let filesToUploadQueue = [];
+let currentFileBeingProcessed = null;
+let currentFileOriginalName = "";
+let isProcessingQueue = false;
 
-// --- Utility Functions for UI & Status Messages ---
+// --- Utility Functions ---
 
 function showToast(message, type = "info") {
+  if (!toastContainer) {
+    console.error("Toast container not found!");
+    return;
+  }
   const toast = document.createElement("div");
   toast.classList.add("toast", type);
-  toast.innerHTML = `
-        <i class="fas ${
-          type === "success"
-            ? "fa-check-circle"
-            : type === "error"
-            ? "fa-times-circle"
-            : "fa-info-circle"
-        }"></i>
-        <span>${message}</span>
-    `;
+  toast.textContent = message;
   toastContainer.appendChild(toast);
 
+  // Automatically remove the toast after a few seconds
   setTimeout(() => {
     toast.remove();
-  }, 4000); // Toast disappears after 4 seconds
-}
-
-function showStatus(message, type = "info") {
-  console.log(`[[Connection Status]] ${message} [[${type}]]`);
-  if (statusMessage) {
-    statusMessage.textContent = message;
-    statusMessage.className = `message text-sm ${
-      type === "info" ? "info" : type === "success" ? "success" : "error"
-    }`;
-    statusMessage.style.display = "block";
-  }
-}
-
-function hideStatus() {
-  if (statusMessage) {
-    statusMessage.textContent = "";
-    statusMessage.style.display = "none";
-    statusMessage.className = "message"; // Reset classes
-  }
-}
-
-// Removed showFileManagerStatus and hideFileManagerStatus as per request.
-// Keeping empty for now to avoid breaking existing calls elsewhere, will remove calls.
-function showFileManagerStatus(message, type = "info") {
-  // console.log(`[[File Manager Status]] ${message} [[${type}]]`);
-  // if (fileManagerStatus) {
-  //   fileManagerStatus.textContent = message;
-  //   fileManagerStatus.className = `message text-sm ${
-  //     type === "info" ? "info" : type === "success" ? "success" : "error"
-  //   }`;
-  //   fileManagerStatus.style.display = "block";
-  // }
-}
-
-function hideFileManagerStatus() {
-  // if (fileManagerStatus) {
-  //   fileManagerStatus.textContent = "";
-  //   fileManagerStatus.style.display = "none";
-  //   fileManagerStatus.className = "message"; // Reset classes
-  // }
+  }, 5000); // 5 seconds
 }
 
 function showModal(modalElement) {
-  modalElement.classList.remove("hidden");
-  document.body.classList.add("overflow-hidden");
+  if (modalElement) {
+    modalElement.classList.remove("hidden");
+  }
 }
 
 function hideModal(modalElement) {
-  modalElement.classList.add("hidden");
-  document.body.classList.remove("overflow-hidden");
+  if (modalElement) {
+    modalElement.classList.add("hidden");
+  }
+}
+
+// --- Initialize DOM Elements Function ---
+function initializeDOMElements() {
+  // Connection & Status
+  accessKeyIdInput = document.getElementById("accessKeyId");
+  secretAccessKeyInput = document.getElementById("secretAccessKey");
+  regionInput = document.getElementById("region");
+  bucketNameInput = document.getElementById("bucketName");
+  connectButton = document.getElementById("connectButton");
+  statusMessage = document.getElementById("statusMessage");
+  connectionSection = document.getElementById("connection-section");
+  fileManagerSection = document.getElementById("file-manager-section");
+  fileListContainer = document.getElementById("file-list");
+  fileManagerStatus = document.getElementById("fileManagerStatus");
+
+  // File Upload
+  fileUploadInput = document.getElementById("fileUploadInput");
+  uploadButton = document.getElementById("uploadButton");
+
+  // Create New Folder Modal
+  newFolderButton = document.getElementById("newFolderButton");
+  createNewFolderModal = document.getElementById("createNewFolderModal");
+  newFolderNameInput = document.getElementById("newFolderNameInput");
+  createFolderConfirmButton = document.getElementById(
+    "createFolderConfirmButton"
+  );
+  createFolderCancelButton = document.getElementById(
+    "createFolderCancelButton"
+  );
+
+  // Search and Filter
+  searchFilesInput = document.getElementById("searchFilesInput");
+  searchButton = document.getElementById("searchButton");
+  filterButton = document.getElementById("filterButton");
+  filterDropdown = document.getElementById("filterDropdown");
+  filterOptions = document.querySelectorAll(".filter-option"); // Get all filter options
+
+  // Header Account Menu
+  accountMenuButton = document.getElementById("accountMenuButton");
+  accountDropdownMenu = document.getElementById("accountDropdownMenu");
+  popupBucketName = document.getElementById("popupBucketName");
+  disconnectButton = document.getElementById("disconnectButton");
+  themeToggleDropdown = document.getElementById("themeToggleDropdown");
+  themeIconDropdown = document.getElementById("themeIconDropdown"); // Corrected: Get the icon element
+  accountIconContainer = document.getElementById("accountIconContainer");
+
+  // File Manager Header (Breadcrumbs & Sync)
+  filePathBreadcrumbs = document.getElementById("filePathBreadcrumbs");
+  syncStatusButton = document.getElementById("syncStatusButton");
+  syncStatusIcon = document.getElementById("syncStatusIcon");
+  backButton = document.getElementById("backButton");
+
+  // Toast Container
+  toastContainer = document.getElementById("toast-container");
+
+  // Share Link Modal
+  shareLinkModal = document.getElementById("shareLinkModal");
+  generatedShareLinkInput = document.getElementById("generatedShareLinkInput");
+  copyShareLinkButton = document.getElementById("copyShareLinkButton");
+  closeShareModalButton = document.getElementById("closeShareModalButton");
+
+  // Duplicate File Modal
+  duplicateFileModal = document.getElementById("duplicateFileModal");
+  fileNameInModal = document.getElementById("fileNameInModal");
+  newFileNameInputDuplicate = document.getElementById("newFileNameInput"); // Ensure correct ID
+  duplicateRenameButton = document.getElementById("duplicateRenameButton");
+  // Important: Use the specific ID for the cancel button, as there are two buttons with 'duplicateCancelButton' ID
+  duplicateCancelButton = document.querySelector(
+    "#duplicateFileModal .close-modal-button"
+  ); // Select the 'x' button
+  document
+    .getElementById("duplicateCancelButton")
+    .addEventListener("click", () => {
+      hideModal(duplicateFileModal);
+      showToast(`Upload for '${currentFileOriginalName}' cancelled.`, "info");
+      currentFileBeingProcessed = null;
+      processNextFileInQueue();
+    });
+  duplicateReplaceButton = document.getElementById("duplicateReplaceButton");
+}
+
+// --- AWS S3 Configuration and Connection ---
+function configureS3(accessKeyId, secretAccessKey, region) {
+  AWS.config.update({
+    accessKeyId: accessKeyId,
+    secretAccessKey: secretAccessKey,
+    region: region,
+  });
+  s3 = new AWS.S3();
+  console.log("S3 configured.");
+}
+
+function saveCredentials(accessKeyId, secretAccessKey, region, bucketName) {
+  localStorage.setItem("awsAccessKeyId", accessKeyId);
+  localStorage.setItem("awsSecretAccessKey", secretAccessKey);
+  localStorage.setItem("awsRegion", region);
+  localStorage.setItem("s3BucketName", bucketName);
+  console.log("Credentials saved.");
+}
+
+function loadCredentials() {
+  const accessKeyId = localStorage.getItem("awsAccessKeyId");
+  const secretAccessKey = localStorage.getItem("awsSecretAccessKey");
+  const region = localStorage.getItem("awsRegion");
+  const bucketName = localStorage.getItem("s3BucketName");
+
+  if (accessKeyId && secretAccessKey && region && bucketName) {
+    configureS3(accessKeyId, secretAccessKey, region);
+    currentBucket = bucketName;
+    return true;
+  }
+  return false;
+}
+
+function clearCredentials() {
+  localStorage.removeItem("awsAccessKeyId");
+  localStorage.removeItem("awsSecretAccessKey");
+  localStorage.removeItem("awsRegion");
+  localStorage.removeItem("s3BucketName");
+  console.log("Credentials cleared.");
+}
+
+async function connectToS3() {
+  const accessKeyId = accessKeyIdInput
+    ? accessKeyIdInput.value
+    : localStorage.getItem("awsAccessKeyId");
+  const secretAccessKey = secretAccessKeyInput
+    ? secretAccessKeyInput.value
+    : localStorage.getItem("awsSecretAccessKey");
+  const region = regionInput
+    ? regionInput.value
+    : localStorage.getItem("awsRegion");
+  const bucketName = bucketNameInput
+    ? bucketNameInput.value
+    : localStorage.getItem("s3BucketName");
+
+  if (!accessKeyId || !secretAccessKey || !region || !bucketName) {
+    showStatus("Please enter all connection details.", "error");
+    return;
+  }
+
+  showStatus("Connecting...", "info");
+  configureS3(accessKeyId, secretAccessKey, region);
+  currentBucket = bucketName;
+
+  try {
+    // Verify connection by listing the bucket's contents
+    await s3
+      .listObjectsV2({
+        Bucket: currentBucket,
+        MaxKeys: 1, // Just check if we can access
+      })
+      .promise();
+
+    saveCredentials(accessKeyId, secretAccessKey, region, bucketName);
+    showStatus(`Connected to bucket: ${currentBucket}`, "success");
+    showToast(`Connected to bucket: ${currentBucket}`, "success");
+    connectionSection.classList.add("hidden");
+    fileManagerSection.classList.remove("hidden");
+    accountIconContainer.classList.remove("hidden"); // Show account icon on successful connection
+    if (popupBucketName) popupBucketName.textContent = currentBucket;
+    listFiles();
+  } catch (error) {
+    showStatus(`Connection failed: ${error.message}`, "error");
+    showToast(`Connection failed: ${error.message}`, "error");
+    console.error("Connection error:", error);
+    // Ensure file manager is hidden and connection section is visible on error
+    fileManagerSection.classList.add("hidden");
+    connectionSection.classList.remove("hidden");
+    accountIconContainer.classList.add("hidden"); // Hide account icon on connection failure
+  }
+}
+
+function disconnectFromS3() {
+  s3 = null;
+  currentBucket = null;
+  clearCredentials();
+  showStatus("Disconnected.", "info");
+  showToast("Disconnected from S3.", "info");
+  fileManagerSection.classList.add("hidden");
+  connectionSection.classList.remove("hidden");
+  accountIconContainer.classList.add("hidden"); // Hide account icon
+  if (connectButton) connectButton.textContent = "Connect"; // Reset button text
+  console.log("Disconnected from S3.");
+}
+
+function showStatus(message, type) {
+  if (statusMessage) {
+    statusMessage.textContent = message;
+    statusMessage.className = `text-center mt-4 text-sm font-medium ${
+      type === "error"
+        ? "text-red-600"
+        : type === "success"
+        ? "text-green-600"
+        : "text-blue-600"
+    }`;
+  }
+}
+
+// --- File Management Functions ---
+
+async function listFiles(prefix = "", searchTerm = "") {
+  currentPrefix = prefix; // Update current prefix
+
+  if (fileManagerStatus) fileManagerStatus.textContent = "Loading files...";
+  if (fileListContainer) fileListContainer.innerHTML = ""; // Clear current list
+
+  updateBreadcrumbs(); // Update breadcrumbs when listing files
+
+  try {
+    const params = {
+      Bucket: currentBucket,
+      Delimiter: "/", // Treat common prefixes as folders
+      Prefix: prefix,
+    };
+    const data = await s3.listObjectsV2(params).promise();
+
+    let filesAndFolders = [];
+
+    // Add folders (CommonPrefixes)
+    if (data.CommonPrefixes) {
+      data.CommonPrefixes.forEach((commonPrefix) => {
+        const folderName = commonPrefix.Prefix.replace(prefix, "").replace(
+          "/",
+          ""
+        );
+        filesAndFolders.push({
+          name: folderName,
+          type: "folder",
+          fullPath: commonPrefix.Prefix,
+          lastModified: null,
+          size: null,
+        });
+      });
+    }
+
+    // Add files (Contents) - Filter out the "folder" entry itself if it appears as a file
+    if (data.Contents) {
+      data.Contents.forEach((content) => {
+        // Skip if it's the current "folder" itself (e.g., a 0-byte object representing the folder)
+        if (content.Key === prefix) {
+          return;
+        }
+
+        const fileName = content.Key.replace(prefix, "");
+        // Only add files directly in the current prefix (not nested files)
+        if (fileName && !fileName.includes("/")) {
+          filesAndFolders.push({
+            name: fileName,
+            type: "file",
+            fullPath: content.Key,
+            lastModified: content.LastModified,
+            size: content.Size,
+          });
+        }
+      });
+    }
+
+    // Apply search filter
+    const filteredFilesAndFolders = filesAndFolders.filter((item) =>
+      item.name.toLowerCase().includes(searchTerm.toLowerCase())
+    );
+
+    // Apply file type filter based on dropdown selection
+    const selectedFilter = filterButton
+      ? filterButton.querySelector("span").textContent.trim()
+      : "All Files"; // Default to "All Files" if button not found
+
+    const finalFilteredList = filteredFilesAndFolders.filter((item) => {
+      if (item.type === "folder") return true; // Always show folders
+
+      const fileExtension = item.name.split(".").pop().toLowerCase();
+      switch (selectedFilter) {
+        case "Documents":
+          return ["pdf", "doc", "docx", "txt", "rtf", "odt"].includes(
+            fileExtension
+          );
+        case "Images":
+          return ["jpg", "jpeg", "png", "gif", "bmp", "svg", "webp"].includes(
+            fileExtension
+          );
+        case "Videos":
+          return ["mp4", "mov", "avi", "mkv", "webm"].includes(fileExtension);
+        case "Audio":
+          return ["mp3", "wav", "aac", "flac"].includes(fileExtension);
+        case "Code":
+          return [
+            "js",
+            "html",
+            "css",
+            "py",
+            "java",
+            "c",
+            "cpp",
+            "json",
+            "xml",
+          ].includes(fileExtension);
+        case "Archives":
+          return ["zip", "tar", "gz", "rar", "7z"].includes(fileExtension);
+        case "All Files":
+        default:
+          return true;
+      }
+    });
+
+    displayFiles(finalFilteredList);
+
+    if (fileManagerStatus)
+      fileManagerStatus.textContent = `Displaying ${finalFilteredList.length} items.`;
+  } catch (error) {
+    if (fileManagerStatus)
+      fileManagerStatus.textContent = `Error listing files: ${error.message}`;
+    showToast(`Error listing files: ${error.message}`, "error");
+    console.error("Error listing files:", error);
+  }
+}
+
+function displayFiles(items) {
+  if (!fileListContainer) {
+    console.error("fileListContainer not found!");
+    return;
+  }
+  fileListContainer.innerHTML = ""; // Clear existing list
+
+  if (items.length === 0) {
+    fileListContainer.innerHTML =
+      '<p class="text-text-secondary text-center py-8">No files or folders found.</p>';
+    return;
+  }
+
+  const table = document.createElement("table");
+  table.classList.add("min-w-full", "bg-bg-secondary", "shadow-md", "rounded");
+  table.innerHTML = `
+        <thead>
+            <tr class="bg-gray-200 text-text-secondary uppercase text-sm leading-normal">
+                <th class="py-3 px-6 text-left">Name</th>
+                <th class="py-3 px-6 text-left">Type</th>
+                <th class="py-3 px-6 text-left">Last Modified</th>
+                <th class="py-3 px-6 text-left">Size</th>
+                <th class="py-3 px-6 text-center">Actions</th>
+            </tr>
+        </thead>
+        <tbody class="text-text-primary text-sm font-light"></tbody>
+    `;
+  const tbody = table.querySelector("tbody");
+
+  items.forEach((item) => {
+    const row = document.createElement("tr");
+    row.classList.add("border-b", "border-border-color", "hover:bg-gray-100");
+
+    let iconClass = "";
+    let sizeDisplay = "";
+    let lastModifiedDisplay = "";
+
+    if (item.type === "folder") {
+      iconClass = "fas fa-folder text-folder-icon-color";
+      sizeDisplay = "-";
+      lastModifiedDisplay = "-";
+    } else {
+      iconClass = getFileIcon(item.name);
+      sizeDisplay = formatBytes(item.size);
+      lastModifiedDisplay = item.lastModified
+        ? new Date(item.lastModified).toLocaleString()
+        : "-";
+    }
+
+    row.innerHTML = `
+            <td class="py-3 px-6 text-left whitespace-nowrap">
+                <div class="flex items-center">
+                    <i class="${iconClass} mr-3"></i>
+                    <span class="${
+                      item.type === "folder"
+                        ? "font-semibold cursor-pointer"
+                        : ""
+                    }">${item.name}</span>
+                </div>
+            </td>
+            <td class="py-3 px-6 text-left">${item.type}</td>
+            <td class="py-3 px-6 text-left">${lastModifiedDisplay}</td>
+            <td class="py-3 px-6 text-left">${sizeDisplay}</td>
+            <td class="py-3 px-6 text-center">
+                <div class="flex item-center justify-center">
+                    ${
+                      item.type === "file"
+                        ? `
+                        <button class="w-6 mr-2 transform hover:text-accent-color hover:scale-110 download-button" data-key="${item.fullPath}" title="Download">
+                            <i class="fas fa-download"></i>
+                        </button>
+                        <button class="w-6 mr-2 transform hover:text-share-color hover:scale-110 share-button" data-key="${item.fullPath}" title="Share">
+                            <i class="fas fa-share-alt"></i>
+                        </button>
+                        <button class="w-6 mr-2 transform hover:text-red-500 hover:scale-110 delete-button" data-key="${item.fullPath}" title="Delete">
+                            <i class="fas fa-trash"></i>
+                        </button>
+                    `
+                        : `
+                        <button class="w-6 mr-2 transform hover:text-red-500 hover:scale-110 delete-button" data-key="${item.fullPath}" data-type="folder" title="Delete Folder">
+                            <i class="fas fa-trash"></i>
+                        </button>
+                    `
+                    }
+                </div>
+            </td>
+        `;
+
+    if (item.type === "folder") {
+      row
+        .querySelector("span")
+        .addEventListener("click", () => listFiles(item.fullPath));
+    } else {
+      // Add event listeners for file actions
+      const downloadButton = row.querySelector(".download-button");
+      if (downloadButton) {
+        downloadButton.addEventListener("click", (e) => {
+          e.stopPropagation();
+          downloadFile(item.fullPath, item.name);
+        });
+      }
+
+      const shareButton = row.querySelector(".share-button");
+      if (shareButton) {
+        shareButton.addEventListener("click", (e) => {
+          e.stopPropagation();
+          openShareModal(item.fullPath);
+        });
+      }
+    }
+
+    const deleteButton = row.querySelector(".delete-button");
+    if (deleteButton) {
+      deleteButton.addEventListener("click", (e) => {
+        e.stopPropagation();
+        if (item.type === "folder") {
+          deleteFolder(item.fullPath);
+        } else {
+          deleteFile(item.fullPath, item.name);
+        }
+      });
+    }
+
+    tbody.appendChild(row);
+  });
+
+  fileListContainer.appendChild(table);
+}
+
+function getFileIcon(fileName) {
+  const extension = fileName.split(".").pop().toLowerCase();
+  switch (extension) {
+    case "pdf":
+      return "fas fa-file-pdf text-red-500";
+    case "doc":
+    case "docx":
+      return "fas fa-file-word text-blue-500";
+    case "xls":
+    case "xlsx":
+      return "fas fa-file-excel text-green-500";
+    case "ppt":
+    case "pptx":
+      return "fas fa-file-powerpoint text-orange-500";
+    case "jpg":
+    case "jpeg":
+    case "png":
+    case "gif":
+    case "bmp":
+    case "svg":
+    case "webp":
+      return "fas fa-file-image text-purple-500";
+    case "mp4":
+    case "mov":
+    case "avi":
+    case "mkv":
+    case "webm":
+      return "fas fa-file-video text-indigo-500";
+    case "mp3":
+    case "wav":
+    case "aac":
+    case "flac":
+      return "fas fa-file-audio text-pink-500";
+    case "zip":
+    case "rar":
+    case "7z":
+      return "fas fa-file-archive text-gray-500";
+    case "txt":
+      return "fas fa-file-alt text-gray-700";
+    case "js":
+    case "html":
+    case "css":
+    case "py":
+    case "java":
+    case "c":
+    case "cpp":
+    case "json":
+    case "xml":
+      return "fas fa-file-code text-blue-700";
+    default:
+      return "fas fa-file text-file-icon-color";
+  }
 }
 
 function formatBytes(bytes, decimals = 2) {
   if (bytes === 0) return "0 Bytes";
   const k = 1024;
   const dm = decimals < 0 ? 0 : decimals;
-  const sizes = ["Bytes", "KB", "MB", "GB", "TB", "PB", "EB", "ZB", "YB"];
+  const sizes = ["Bytes", "KB", "MB", "GB", "TB"];
   const i = Math.floor(Math.log(bytes) / Math.log(k));
   return parseFloat((bytes / Math.pow(k, i)).toFixed(dm)) + " " + sizes[i];
 }
 
-/**
- * Formats a long file name for display, truncating if it exceeds 2 lines.
- * If truncated, it shows the beginning and the extension (e.g., "verylongfilena...txt").
- * @param {string} fileName The original file name.
- * @returns {string} The formatted file name.
- */
-function formatFileNameForDisplay(fileName) {
-  const maxLength = 30; // Max characters before attempting to truncate for a single line
-  const maxLines = 2; // Max lines before truly truncating with ellipsis
-
-  const canvas = document.createElement("canvas");
-  const context = canvas.getContext("2d");
-  context.font = "1rem 'Open Sans'"; // Adjust font to match .text-lg and .font-semibold
-
-  const words = fileName.split(" ");
-  let currentLine = "";
-  let lineCount = 0;
-  const lines = [];
-
-  for (let i = 0; i < words.length; i++) {
-    const testLine =
-      currentLine === "" ? words[i] : currentLine + " " + words[i];
-    const metrics = context.measureText(testLine);
-    // Rough estimate for max width in the modal to fit about 2 lines.
-    // This is highly dependent on actual CSS width of parent, so we use a character count heuristic as well.
-    const containerWidthEstimate = 350; // px, roughly max-w-md - padding
-    const charWidthEstimate = 8; // px per character
-
-    if (metrics.width > containerWidthEstimate && currentLine !== "") {
-      // If current line overflows
-      lines.push(currentLine);
-      currentLine = words[i];
-      lineCount++;
-    } else {
-      currentLine = testLine;
-    }
-    if (currentLine.length > maxLength && lineCount < maxLines - 1) {
-      // If a single word is very long, force break
-      lines.push(currentLine);
-      currentLine = "";
-      lineCount++;
-    }
-
-    if (lineCount >= maxLines) {
-      break; // Stop processing words if already past max lines
-    }
-  }
-  if (currentLine !== "") {
-    lines.push(currentLine);
-  }
-
-  if (lines.length > maxLines) {
-    const parts = fileName.split(".");
-    const extension = parts.length > 1 ? "." + parts.pop() : "";
-    let baseName = parts.join(".");
-
-    const truncateLength = 15 - extension.length; // Adjusted length for beginning of name
-    if (baseName.length > truncateLength) {
-      baseName = baseName.substring(0, truncateLength);
-    }
-    return `${baseName}...${extension}`;
-  }
-  return fileName;
-}
-
-// --- S3 Operations ---
-
-// Save credentials to localStorage
-function saveCredentials(accessKeyId, secretAccessKey, region, bucketName) {
-  localStorage.setItem("awsAccessKeyId", accessKeyId);
-  localStorage.setItem("awsSecretAccessKey", secretAccessKey);
-  localStorage.setItem("awsRegion", region);
-  localStorage.setItem("awsBucketName", bucketName);
-}
-
-// Load credentials from localStorage
-function loadCredentials() {
-  const accessKeyId = localStorage.getItem("awsAccessKeyId");
-  const secretAccessKey = localStorage.getItem("awsSecretAccessKey");
-  const region = localStorage.getItem("awsRegion");
-  const bucketName = localStorage.getItem("awsBucketName");
-
-  if (accessKeyId && secretAccessKey && region && bucketName) {
-    accessKeyIdInput.value = accessKeyId;
-    secretAccessKeyInput.value = secretAccessKey;
-    regionInput.value = region;
-    bucketNameInput.value = bucketName;
-    return true;
-  }
-  return false;
-}
-
-async function connectToS3() {
-  const accessKeyId = accessKeyIdInput.value;
-  const secretAccessKey = secretAccessKeyInput.value;
-  const region = regionInput.value;
-  const bucketName = bucketNameInput.value;
-
-  if (!accessKeyId || !secretAccessKey || !region || !bucketName) {
-    showStatus("Please fill in all connection details.", "error");
-    showToast("Please fill in all connection details.", "error");
-    return;
-  }
-
-  showStatus("Attempting to connect...", "info");
-  showToast("Attempting to connect...", "info");
-  AWS.config.update({
-    accessKeyId: accessKeyId,
-    secretAccessKey: secretAccessKey,
-    region: region,
-  });
-
-  s3 = new AWS.S3({ apiVersion: "2006-03-01", signatureVersion: "v4" });
-  currentBucket = bucketName;
-
-  try {
-    await s3.listObjectsV2({ Bucket: currentBucket, MaxKeys: 1 }).promise();
-    showStatus("Connection successful!", "success");
-    showToast("Connected to S3 bucket!", "success"); // Show toast only on successful connection
-    connectionSection.classList.add("hidden");
-    fileManagerSection.classList.remove("hidden");
-    popupBucketName.textContent = currentBucket;
-    currentPrefix = ""; // Reset prefix on new connection
-    accountIconContainer.classList.remove("hidden");
-    initialConnectionLoad = true; // Set flag for initial file listing after connection
-    saveCredentials(accessKeyId, secretAccessKey, region, bucketName); // Save on successful connection
-    listFiles();
-  } catch (error) {
-    console.error("S3 Connection Error:", error);
-    showStatus(`Connection failed: ${error.message}`, "error");
-    showToast(`Connection failed: ${error.message}`, "error");
-    s3 = null; // Clear S3 object on failure
-    // If auto-connect failed, clear credentials so user has to re-enter
-    localStorage.removeItem("awsAccessKeyId");
-    localStorage.removeItem("awsSecretAccessKey");
-    localStorage.removeItem("awsRegion");
-    localStorage.removeItem("awsBucketName");
-  }
-}
-
-// Helper function to determine file type category
-function getFileTypeCategory(fileName, isFolder = false) {
-  if (isFolder) return "folders";
-  const ext = fileName.split(".").pop().toLowerCase();
-
-  // Documents
-  if (
-    [
-      "doc",
-      "docx",
-      "xls",
-      "xlsx",
-      "ppt",
-      "pptx",
-      "pdf",
-      "odt",
-      "ods",
-      "odp",
-    ].includes(ext)
-  )
-    return "documents";
-  // Images
-  if (["jpg", "jpeg", "png", "gif", "bmp", "svg", "webp", "ico"].includes(ext))
-    return "images";
-  // Videos
-  if (["mp4", "mov", "avi", "mkv", "webm", "flv", "wmv"].includes(ext))
-    return "videos";
-  // Audio
-  if (["mp3", "wav", "aac", "flac", "ogg", "wma"].includes(ext)) return "audio";
-  // Code
-  if (
-    [
-      "js",
-      "html",
-      "css",
-      "json",
-      "xml",
-      "py",
-      "java",
-      "c",
-      "cpp",
-      "h",
-      "php",
-      "rb",
-      "go",
-      "swift",
-      "ts",
-      "jsx",
-      "tsx",
-    ].includes(ext)
-  )
-    return "code";
-  // Archives
-  if (["zip", "rar", "7z", "tar", "gz", "bz2", "xz"].includes(ext))
-    return "archives";
-  // Text
-  if (["txt", "md", "csv"].includes(ext)) return "text"; // Adding text as a separate filter
-
-  return "other"; // Catch-all for anything not explicitly categorized
-}
-
-async function listFiles(prefix = "") {
-  if (!s3) {
-    // showFileManagerStatus("Not connected to S3.", "error"); // Removed as per request
-    syncStatusButton.title = "Disconnected";
-    return;
-  }
-
-  syncStatusIcon.classList.add("fa-spin");
-  syncStatusButton.title = "Syncing...";
-
-  try {
-    const params = {
-      Bucket: currentBucket,
-      Delimiter: "/",
-      Prefix: prefix,
-    };
-    const data = await s3.listObjectsV2(params).promise();
-
-    fileListContainer.innerHTML = ""; // Clear existing list, except the top nav
-
-    // Update dynamic breadcrumbs
-    filePathBreadcrumbs.innerHTML = ""; // Clear previous breadcrumbs
-
-    // Enable/disable back button
-    backButton.disabled = prefix === "";
-
-    // Add "Root" button with home icon always present
-    const rootButton = document.createElement("button");
-    rootButton.id = "rootButton";
-    rootButton.className = "crumb-button";
-    rootButton.innerHTML = `<i class="fas fa-home"></i><span>Root</span>`;
-    rootButton.addEventListener("click", () => {
-      if (currentPrefix !== "") {
-        currentPrefix = "";
-        initialConnectionLoad = false; // Not an initial load when navigating to root
-        listFiles();
-      }
-    });
-    filePathBreadcrumbs.appendChild(rootButton);
-
-    // Add path segments for breadcrumbs
-    if (currentPrefix !== "") {
-      const pathParts = currentPrefix.split("/").filter(Boolean); // Split and remove empty strings
-      let currentPath = "";
-      pathParts.forEach((part, index) => {
-        currentPath += part + "/";
-
-        const separator = document.createElement("span");
-        separator.className = "crumb-separator";
-        separator.textContent = "/";
-        filePathBreadcrumbs.appendChild(separator);
-
-        const crumb = document.createElement("span");
-        crumb.className = "crumb";
-        crumb.textContent = part;
-        crumb.dataset.prefix = currentPath; // Store full prefix for this segment
-
-        // Make all but the last crumb clickable
-        if (index < pathParts.length - 1) {
-          crumb.addEventListener("click", (e) => {
-            e.stopPropagation(); // Prevent bubbling to parent elements
-            currentPrefix = e.target.dataset.prefix;
-            initialConnectionLoad = false;
-            listFiles();
-          });
-        } else {
-          crumb.classList.add("active"); // Last part is the active/current folder
-          crumb.style.cursor = "default"; // Make last crumb not appear clickable
-        }
-        filePathBreadcrumbs.appendChild(crumb);
-      });
-    }
-
-    const table = document.createElement("table");
-    table.className = "min-w-full divide-y";
-    table.style.borderColor = "var(--border-color)";
-
-    const tbody = document.createElement("tbody");
-    tbody.className = "divide-y";
-    tbody.style.backgroundColor = "var(--bg-secondary)";
-    tbody.style.borderColor = "var(--border-color)";
-
-    // Folders - always displayed unless "folders" filter is explicitly excluded,
-    // but the current implementation filters *by* type.
-    // So if filter is "folders", only folders are shown. If "all", folders and files.
-    // If "documents", only documents are shown, no folders.
-    data.CommonPrefixes.forEach((commonPrefix) => {
-      const folderName = commonPrefix.Prefix.replace(prefix, "").replace(
-        "/",
-        ""
-      );
-      const category = getFileTypeCategory(folderName, true); // Get category for folder
-
-      if (currentFilter === "all" || currentFilter === category) {
-        const row = document.createElement("tr");
-        row.className = "file-item transition-colors duration-150";
-        row.innerHTML = `
-                <td class="px-6 py-4 whitespace-nowrap">
-                    <div class="flex items-center">
-                        <i class="fas fa-folder folder-icon text-xl mr-3"></i>
-                        <span class="font-medium" style="color: var(--text-primary);">${folderName}</span>
-                    </div>
-                </td>
-                <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                    <div class="flex items-center justify-end space-x-4 file-actions">
-                        <span style="color: var(--text-secondary);">Folder</span>
-                    </div>
-                </td>
-            `;
-        row.addEventListener("click", () => {
-          currentPrefix = commonPrefix.Prefix;
-          initialConnectionLoad = false; // Not an initial load when navigating into a folder
-          listFiles(); // Re-list with new prefix (and current filter)
-        });
-        tbody.appendChild(row);
-      }
-    });
-
-    // Files
-    data.Contents.forEach((content) => {
-      const fileName = content.Key.replace(prefix, "");
-      if (fileName === "") return; // Skip the prefix itself if it's listed
-
-      const category = getFileTypeCategory(fileName);
-
-      // Apply filter here
-      if (currentFilter !== "all" && currentFilter !== category) {
-        return; // Skip if it doesn't match the current filter
-      }
-
-      const fileSize = formatBytes(content.Size);
-      const lastModified = new Date(content.LastModified).toLocaleDateString();
-      const fileExtension = fileName.split(".").pop().toLowerCase();
-      let fileIconClass = "fas fa-file file-icon"; // Default file icon
-
-      if (fileExtension === "pdf") fileIconClass = "fas fa-file-pdf file-icon";
-      else if (["doc", "docx", "odt"].includes(fileExtension))
-        fileIconClass = "fas fa-file-word file-icon";
-      else if (["xls", "xlsx", "ods"].includes(fileExtension))
-        fileIconClass = "fas fa-file-excel file-icon";
-      else if (["ppt", "pptx", "odp"].includes(fileExtension))
-        fileIconClass = "fas fa-file-powerpoint file-icon";
-      else if (
-        ["jpg", "jpeg", "png", "gif", "bmp", "svg", "webp", "ico"].includes(
-          fileExtension
-        )
-      )
-        fileIconClass = "fas fa-file-image file-icon";
-      else if (
-        ["zip", "rar", "7z", "tar", "gz", "bz2", "xz"].includes(fileExtension)
-      )
-        fileIconClass = "fas fa-file-archive file-icon";
-      else if (
-        ["mp3", "wav", "aac", "flac", "ogg", "wma"].includes(fileExtension)
-      )
-        fileIconClass = "fas fa-file-audio file-icon";
-      else if (
-        ["mp4", "mov", "avi", "mkv", "webm", "flv", "wmv"].includes(
-          fileExtension
-        )
-      )
-        fileIconClass = "fas fa-file-video file-icon";
-      else if (["txt", "md", "csv"].includes(fileExtension))
-        fileIconClass = "fas fa-file-alt file-icon";
-      else if (
-        [
-          "js",
-          "html",
-          "css",
-          "json",
-          "xml",
-          "py",
-          "java",
-          "c",
-          "cpp",
-          "h",
-          "php",
-          "rb",
-          "go",
-          "swift",
-          "ts",
-          "jsx",
-          "tsx",
-        ].includes(fileExtension)
-      )
-        fileIconClass = "fas fa-file-code file-icon";
-
-      const row = document.createElement("tr");
-      row.className = "file-item transition-colors duration-150";
-      row.innerHTML = `
-                <td class="px-6 py-4 whitespace-nowrap">
-                    <div class="flex items-center">
-                        <i class="${fileIconClass} text-xl mr-3"></i>
-                        <span class="font-medium" style="color: var(--text-primary);">${fileName}</span>
-                    </div>
-                </td>
-                <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                    <div class="flex items-center justify-end space-x-4 file-actions">
-                        <span style="color: var(--text-secondary);">${fileSize}</span>
-                        <span style="color: var(--text-secondary);">${lastModified}</span>
-                        <button class="text-accent hover:filter hover:brightness(80%) transition-colors duration-200 flex items-center space-x-1" onclick="downloadFile('${content.Key}')">
-                            <i class="fas fa-download"></i>
-                            <span>Download</span>
-                        </button>
-                        <button class="text-share hover:filter hover:brightness(80%) transition-colors duration-200 flex items-center space-x-1" onclick="showShareLinkModal('${content.Key}', '${fileName}')">
-                            <i class="fas fa-share-alt"></i>
-                            <span>Share</span>
-                        </button>
-                        <button class="text-red-500 hover:text-red-700 transition-colors duration-200 flex items-center space-x-1" onclick="deleteFile('${content.Key}')">
-                            <i class="fas fa-trash-alt"></i>
-                            <span>Delete</span>
-                        </button>
-                    </div>
-                </td>
-            `;
-      tbody.appendChild(row);
-    });
-
-    table.appendChild(tbody);
-    fileListContainer.appendChild(table);
-
-    // Only show "Files loaded successfully" as a toast for initial connection load
-    if (initialConnectionLoad) {
-      showToast("Files loaded successfully!", "success");
-      initialConnectionLoad = false; // Reset flag after the initial load
-    }
-    // hideFileManagerStatus(); // Removed as per request
-
-    syncStatusIcon.classList.remove("fa-spin");
-    syncStatusButton.title = "Files are up-to-date";
-  } catch (error) {
-    console.error("Error listing files:", error);
-    showToast(`Error listing files: ${error.message}`, "error"); // Keep toast for errors
-    initialConnectionLoad = false; // Reset flag on error too
-    syncStatusIcon.classList.remove("fa-spin");
-    syncStatusButton.title = `Error syncing: ${error.message}`;
-  }
-}
-
-// --- File Upload ---
-uploadButton.addEventListener("click", () => {
-  fileUploadInput.click(); // Trigger the hidden file input click
-});
-
-fileUploadInput.addEventListener("change", (event) => {
-  const files = event.target.files;
-  if (files.length > 0) {
-    uploadFiles(files); // Automatically upload after selection
-  }
-});
-
-async function uploadFiles(files) {
-  if (!s3) {
+async function uploadFile(file, uploadFileName) {
+  if (!s3 || !currentBucket) {
     showToast("Not connected to S3.", "error");
     return;
   }
-  showToast("Uploading files...", "info"); // Keep toast for upload initiation
-  syncStatusIcon.classList.add("fa-spin");
-  syncStatusButton.title = "Uploading...";
 
-  for (const file of files) {
-    const uploadParams = {
-      Bucket: currentBucket,
-      Key: currentPrefix + file.name, // Include current prefix in the key
-      Body: file,
-    };
+  const fileKey = currentPrefix + uploadFileName;
+  const params = {
+    Bucket: currentBucket,
+    Key: fileKey,
+    Body: file,
+    ContentType: file.type,
+  };
 
-    try {
-      await s3.upload(uploadParams).promise();
-      showToast(`'${file.name}' uploaded successfully.`, "success");
-    } catch (error) {
-      console.error("Error uploading file:", file.name, error);
-      showToast(`Failed to upload '${file.name}': ${error.message}`, "error");
-    }
+  try {
+    showToast(`Uploading '${uploadFileName}'...`, "info");
+    await s3.upload(params).promise();
+    showToast(`'${uploadFileName}' uploaded successfully!`, "success");
+    listFiles(currentPrefix, searchFilesInput.value); // Refresh list
+  } catch (error) {
+    showToast(
+      `Upload failed for '${uploadFileName}': ${error.message}`,
+      "error"
+    );
+    console.error("Error uploading file:", error);
   }
-  initialConnectionLoad = false; // Upload is not an initial load
-  listFiles(); // Refresh the file list after uploads
-  // hideFileManagerStatus(); // Removed as per request
-  fileUploadInput.value = ""; // Clear selected files from the input
 }
 
-// --- File Download ---
-async function downloadFile(key) {
-  if (!s3) {
+async function downloadFile(key, fileName) {
+  if (!s3 || !currentBucket) {
     showToast("Not connected to S3.", "error");
     return;
   }
-  showToast("Preparing download...", "info");
+
   try {
+    showToast(`Downloading '${fileName}'...`, "info");
     const params = {
       Bucket: currentBucket,
       Key: key,
     };
     const data = await s3.getObject(params).promise();
-    const url = URL.createObjectURL(new Blob([data.Body]));
+
+    // Create a Blob from the file data and create a download link
+    const blob = new Blob([data.Body], { type: data.ContentType });
+    const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
-    a.download = key.split("/").pop(); // Get just the filename
+    a.download = fileName; // Set the desired file name for download
     document.body.appendChild(a);
     a.click();
-    a.remove();
-    URL.revokeObjectURL(url);
-    showToast("Download started.", "success");
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url); // Clean up the object URL
+
+    showToast(`'${fileName}' downloaded successfully!`, "success");
   } catch (error) {
+    showToast(`Download failed for '${fileName}': ${error.message}`, "error");
     console.error("Error downloading file:", error);
-    showToast(`Failed to download: ${error.message}`, "error");
   }
 }
 
-// --- File Deletion ---
-async function deleteFile(key) {
-  if (!s3) {
+async function deleteFile(key, fileName) {
+  if (!s3 || !currentBucket) {
     showToast("Not connected to S3.", "error");
     return;
   }
 
-  if (!confirm(`Are you sure you want to delete '${key.split("/").pop()}'?`)) {
+  if (!confirm(`Are you sure you want to delete '${fileName}'?`)) {
     return;
   }
 
-  showToast("Deleting file...", "info");
-  syncStatusIcon.classList.add("fa-spin");
-  syncStatusButton.title = "Deleting...";
   try {
+    showToast(`Deleting '${fileName}'...`, "info");
     const params = {
       Bucket: currentBucket,
       Key: key,
     };
     await s3.deleteObject(params).promise();
-    showToast(`'${key.split("/").pop()}' deleted successfully.`, "success");
-    initialConnectionLoad = false; // Deletion is not an initial load
-    listFiles(); // Refresh list
+    showToast(`'${fileName}' deleted successfully!`, "success");
+    listFiles(currentPrefix, searchFilesInput.value); // Refresh list
   } catch (error) {
+    showToast(`Delete failed for '${fileName}': ${error.message}`, "error");
     console.error("Error deleting file:", error);
-    showToast(`Failed to delete: ${error.message}`, "error");
-    syncStatusIcon.classList.remove("fa-spin");
-    syncStatusButton.title = `Error deleting: ${error.message}`;
   }
 }
 
-// --- Create New Folder ---
-async function createNewFolder() {
-  if (!s3) {
+async function createFolder(folderName) {
+  if (!s3 || !currentBucket) {
     showToast("Not connected to S3.", "error");
     return;
   }
 
-  const folderName = newFolderNameInput.value.trim();
-  if (!folderName) {
-    showToast("Folder name cannot be empty.", "error");
-    return;
-  }
+  // S3 treats folders as objects with a trailing slash
+  const folderKey = currentPrefix + folderName.trim() + "/";
 
-  const folderKey = currentPrefix + folderName + "/";
-
-  showToast("Creating folder...", "info");
-  syncStatusIcon.classList.add("fa-spin");
-  syncStatusButton.title = "Creating folder...";
   try {
+    showToast(`Creating folder '${folderName}'...`, "info");
     const params = {
       Bucket: currentBucket,
       Key: folderKey,
-      Body: "", // Empty body for a folder object
+      Body: "", // Body is required, can be empty for a folder
+      ContentType: "application/x-directory",
     };
     await s3.putObject(params).promise();
-    showToast(`Folder '${folderName}' created successfully.`, "success");
+    showToast(`Folder '${folderName}' created successfully!`, "success");
     hideModal(createNewFolderModal);
-    newFolderNameInput.value = ""; // Clear input
-    initialConnectionLoad = false; // Folder creation is not an initial load
-    listFiles(); // Refresh list
+    listFiles(currentPrefix, searchFilesInput.value); // Refresh list
   } catch (error) {
+    showToast(`Folder creation failed: ${error.message}`, "error");
     console.error("Error creating folder:", error);
-    showToast(`Failed to create folder: ${error.message}`, "error");
-    syncStatusIcon.classList.remove("fa-spin");
-    syncStatusButton.title = `Error creating folder: ${error.message}`;
+  }
+}
+
+async function deleteFolder(prefix) {
+  if (!s3 || !currentBucket) {
+    showToast("Not connected to S3.", "error");
+    return;
+  }
+
+  if (
+    !confirm(
+      `Are you sure you want to delete the folder '${prefix}' and all its contents?`
+    )
+  ) {
+    return;
+  }
+
+  try {
+    showToast(`Deleting folder '${prefix}' and its contents...`, "info");
+
+    // First, list all objects within the prefix
+    const listParams = {
+      Bucket: currentBucket,
+      Prefix: prefix,
+    };
+    const listedObjects = await s3.listObjectsV2(listParams).promise();
+
+    if (listedObjects.Contents.length === 0 && !listedObjects.CommonPrefixes) {
+      // If folder is truly empty (no contents or sub-folders), delete the folder marker
+      await s3
+        .deleteObject({
+          Bucket: currentBucket,
+          Key: prefix,
+        })
+        .promise();
+      showToast(`Folder '${prefix}' deleted successfully!`, "success");
+      listFiles(currentPrefix, searchFilesInput.value);
+      return;
+    }
+
+    // If there are objects, prepare them for deletion
+    const deleteParams = {
+      Bucket: currentBucket,
+      Delete: { Objects: [] },
+    };
+
+    listedObjects.Contents.forEach(({ Key }) => {
+      deleteParams.Delete.Objects.push({ Key });
+    });
+
+    // Handle more than 1000 objects (S3 API limit per delete call)
+    while (listedObjects.IsTruncated) {
+      listParams.ContinuationToken = listedObjects.NextContinuationToken;
+      listedObjects = await s3.listObjectsV2(listParams).promise();
+      listedObjects.Contents.forEach(({ Key }) => {
+        deleteParams.Delete.Objects.push({ Key });
+      });
+    }
+
+    if (deleteParams.Delete.Objects.length > 0) {
+      await s3.deleteObjects(deleteParams).promise();
+    }
+
+    showToast(
+      `Folder '${prefix}' and its contents deleted successfully!`,
+      "success"
+    );
+    listFiles(currentPrefix, searchFilesInput.value); // Refresh list
+  } catch (error) {
+    showToast(`Folder deletion failed: ${error.message}`, "error");
+    console.error("Error deleting folder or its contents:", error);
   }
 }
 
 // --- Share Link Functionality ---
-async function generateShareLink(fileKey, durationSeconds) {
-  if (!s3) {
+async function openShareModal(key) {
+  if (!s3 || !currentBucket) {
     showToast("Not connected to S3.", "error");
     return;
   }
-  if (durationSeconds === undefined) {
-    generatedShareLinkInput.value = "Select a duration.";
-    newShareLinkButton.disabled = true;
-    return;
-  }
 
+  showToast("Generating shareable link...", "info");
   try {
     const params = {
       Bucket: currentBucket,
-      Key: fileKey,
-      Expires: durationSeconds,
+      Key: key,
+      Expires: 3600, // Link valid for 1 hour (in seconds)
     };
-
     const url = await s3.getSignedUrlPromise("getObject", params);
-    generatedShareLinkInput.value = url;
-    copyShareLinkButton.textContent = "Copy";
-    fileKeyToShare = fileKey;
-    showToast("Share link generated!", "success");
-    newShareLinkButton.disabled = false; // Enable button once a link is generated
+    if (generatedShareLinkInput) generatedShareLinkInput.value = url;
+    showModal(shareLinkModal);
+    showToast("Shareable link generated!", "success");
   } catch (error) {
-    console.error("Error generating share link:", error);
     showToast(`Failed to generate share link: ${error.message}`, "error");
-    generatedShareLinkInput.value = "Error generating link.";
-    newShareLinkButton.disabled = true;
+    console.error("Error generating share link:", error);
   }
 }
 
-function showShareLinkModal(fileKey, fileName) {
-  sharedFileNameSpan.textContent = formatFileNameForDisplay(fileName); // Format the file name
-  fileKeyToShare = fileKey;
-  generatedShareLinkInput.value = "Select duration to generate link"; // Reset text
-  newShareLinkButton.disabled = true; // Disable until duration is selected
-  // Clear any previously active duration buttons
-  Array.from(durationButtonsContainer.children).forEach((button) =>
-    button.classList.remove("btn-primary")
+function copyShareLink() {
+  if (generatedShareLinkInput) {
+    generatedShareLinkInput.select();
+    generatedShareLinkInput.setSelectionRange(0, 99999); // For mobile devices
+    document.execCommand("copy");
+    showToast("Link copied to clipboard!", "success");
+  }
+}
+
+// --- Navigation (Breadcrumbs & Back Button) ---
+function updateBreadcrumbs() {
+  if (!filePathBreadcrumbs) {
+    console.error("filePathBreadcrumbs not found!");
+    return;
+  }
+  filePathBreadcrumbs.innerHTML = ""; // Clear existing breadcrumbs
+
+  const parts = currentPrefix.split("/").filter(Boolean); // Split and remove empty strings
+
+  // Always add the root/bucket
+  const rootCrumb = document.createElement("span");
+  rootCrumb.classList.add(
+    "breadcrumb-item",
+    "cursor-pointer",
+    "text-blue-600",
+    "hover:text-blue-800"
   );
-  showModal(shareLinkModal);
-}
+  rootCrumb.textContent = currentBucket || "Home"; // Display bucket name or "Home"
+  rootCrumb.dataset.prefix = "";
+  rootCrumb.addEventListener("click", () => listFiles(""));
+  filePathBreadcrumbs.appendChild(rootCrumb);
 
-// --- Event Listeners ---
-connectButton.addEventListener("click", connectToS3);
-
-disconnectButton.addEventListener("click", () => {
-  s3 = null;
-  currentBucket = null;
-  currentPrefix = "";
-  // Clear stored credentials
-  localStorage.removeItem("awsAccessKeyId");
-  localStorage.removeItem("awsSecretAccessKey");
-  localStorage.removeItem("awsRegion");
-  localStorage.removeItem("awsBucketName");
-
-  accessKeyIdInput.value = "";
-  secretAccessKeyInput.value = "";
-  regionInput.value = "";
-  bucketNameInput.value = "";
-  connectionSection.classList.remove("hidden");
-  fileManagerSection.classList.add("hidden");
-  hideStatus();
-  // hideFileManagerStatus(); // Removed as per request
-  accountIconContainer.classList.add("hidden");
-  showToast("Disconnected from S3.", "info");
-  initialConnectionLoad = true; // Reset initialConnectionLoad flag for next connection
-  syncStatusIcon.classList.remove("fa-spin"); // Stop any spinning
-  syncStatusButton.title = "Disconnected";
-});
-
-// Account Menu Dropdown
-accountMenuButton.addEventListener("click", (event) => {
-  event.stopPropagation(); // Prevent document click from closing it immediately
-  accountDropdownMenu.classList.toggle("hidden");
-});
-
-// Close dropdown if clicked outside
-document.addEventListener("click", (event) => {
-  if (
-    !accountMenuButton.contains(event.target) &&
-    !accountDropdownMenu.contains(event.target)
-  ) {
-    accountDropdownMenu.classList.add("hidden");
-  }
-});
-
-// Theme Toggle in Dropdown
-themeToggleDropdown.addEventListener("click", () => {
-  document.body.classList.toggle("dark-mode");
-  const isDarkMode = document.body.classList.contains("dark-mode");
-  themeIconDropdown.className = isDarkMode
-    ? "fas fa-sun mr-2"
-    : "fas fa-moon mr-2";
-  showToast(`Theme changed to ${isDarkMode ? "Dark" : "Light"} Mode`, "info");
-  localStorage.setItem("theme", isDarkMode ? "dark" : "light"); // Persist theme preference
-});
-
-// Sync button
-syncStatusButton.addEventListener("click", () => {
-  if (s3) {
-    showToast("Manually refreshing file list...", "info");
-    listFiles(); // Re-list files
-  } else {
-    showToast("Cannot refresh: Not connected to S3.", "error");
-  }
-});
-
-// Back button
-backButton.addEventListener("click", () => {
-  if (currentPrefix === "") {
-    return; // Already at root
+  if (parts.length > 0) {
+    filePathBreadcrumbs.appendChild(document.createTextNode(" / "));
   }
 
-  // Remove the last segment from the prefix
-  const pathParts = currentPrefix.split("/").filter(Boolean);
-  pathParts.pop(); // Remove the last part
-  currentPrefix = pathParts.length > 0 ? pathParts.join("/") + "/" : ""; // Reconstruct prefix
+  let path = "";
+  parts.forEach((part, index) => {
+    path += part + "/";
+    const crumb = document.createElement("span");
+    crumb.classList.add("breadcrumb-item", "cursor-pointer");
+    if (index === parts.length - 1) {
+      crumb.classList.add("text-gray-500", "font-semibold"); // Current folder
+    } else {
+      crumb.classList.add("text-blue-600", "hover:text-blue-800");
+    }
+    crumb.textContent = part;
+    crumb.dataset.prefix = path;
+    crumb.addEventListener("click", () => listFiles(path));
+    filePathBreadcrumbs.appendChild(crumb);
 
-  initialConnectionLoad = false; // Not an initial load
-  listFiles();
-});
+    if (index < parts.length - 1) {
+      filePathBreadcrumbs.appendChild(document.createTextNode(" / "));
+    }
+  });
 
-// Modal related event listeners
-newFolderButton.addEventListener("click", () => {
-  showModal(createNewFolderModal);
-  newFolderNameInput.focus();
-});
-createFolderCancelButton.addEventListener("click", () =>
-  hideModal(createNewFolderModal)
-);
-createFolderConfirmButton.addEventListener("click", createNewFolder);
-newFolderNameInput.addEventListener("keydown", (event) => {
-  if (event.key === "Enter") {
-    createNewFolder();
-  }
-});
-
-// Share Link Modal Event Listeners
-closeShareModalButton.addEventListener("click", () =>
-  hideModal(shareLinkModal)
-);
-
-copyShareLinkButton.addEventListener("click", () => {
-  generatedShareLinkInput.select();
-  document.execCommand("copy");
-  copyShareLinkButton.textContent = "Copied!";
-  showToast("Link copied to clipboard!", "success");
-});
-
-durationButtonsContainer.addEventListener("click", (event) => {
-  if (event.target.tagName === "BUTTON") {
-    // Remove 'btn-primary' from all duration buttons
-    Array.from(durationButtonsContainer.children).forEach((button) =>
-      button.classList.remove("btn-primary")
-    );
-    // Add 'btn-primary' to the clicked button
-    event.target.classList.add("btn-primary");
-
-    const duration = parseInt(event.target.dataset.duration);
-    generateShareLink(fileKeyToShare, duration); // Generate link immediately on duration selection
-  }
-});
-
-newShareLinkButton.addEventListener("click", () => {
-  const activeDurationButton =
-    durationButtonsContainer.querySelector(".btn-primary");
-  if (activeDurationButton) {
-    const duration = parseInt(activeDurationButton.dataset.duration);
-    generateShareLink(fileKeyToShare, duration);
-  } else {
-    showToast("Please select a duration first.", "info");
-  }
-});
-
-// Filter Dropdown and Options
-filterButton.addEventListener("click", (event) => {
-  event.stopPropagation();
-  const buttonRect = filterButton.getBoundingClientRect();
-
-  // Position the dropdown
-  filterDropdown.style.top = `${buttonRect.bottom + window.scrollY + 8}px`; // 8px for spacing
-
-  // Align left edge of the dropdown with the left edge of the filter button
-  filterDropdown.style.left = `${buttonRect.left + window.scrollX}px`;
-
-  // Check if the dropdown goes off-screen to the right
-  const viewportWidth = window.innerWidth;
-  const dropdownRightEdge = filterDropdown.getBoundingClientRect().right;
-
-  if (dropdownRightEdge > viewportWidth) {
-    // If it goes off-screen, adjust its left position to align its right edge with the viewport's right edge,
-    // plus a small margin.
-    filterDropdown.style.left = `${
-      viewportWidth - filterDropdown.offsetWidth - 10
-    }px`; // 10px margin from right
-    // Ensure it doesn't go too far left if the screen is very small
-    if (filterDropdown.offsetLeft < 0) {
-      filterDropdown.style.left = "10px"; // 10px margin from left
+  // Enable/disable back button
+  if (backButton) {
+    if (currentPrefix === "" || currentPrefix === "/") {
+      backButton.classList.add("hidden");
+    } else {
+      backButton.classList.remove("hidden");
     }
   }
+}
 
-  filterDropdown.classList.toggle("hidden");
-});
-
-filterOptions.forEach((option) => {
-  option.addEventListener("click", (event) => {
-    currentFilter = event.target.dataset.filter;
-    showToast(`Filter set to: ${event.target.textContent}`, "info");
-    filterDropdown.classList.add("hidden"); // Hide dropdown after selection
-    listFiles(); // Re-list files with the new filter
-  });
-});
-
-// Close dropdown if clicked outside
-document.addEventListener("click", (event) => {
-  if (
-    !filterButton.contains(event.target) &&
-    !filterDropdown.contains(event.target)
-  ) {
-    filterDropdown.classList.add("hidden");
+function navigateBack() {
+  const parts = currentPrefix.split("/").filter(Boolean);
+  if (parts.length > 0) {
+    parts.pop(); // Remove last part
+    const newPrefix = parts.length > 0 ? parts.join("/") + "/" : "";
+    listFiles(newPrefix);
+  } else {
+    listFiles(""); // Go to root if at a top-level folder
   }
-});
+}
 
-// Initial state: hide account icon until connected
-accountIconContainer.classList.add("hidden");
-
-// Initialize theme based on localStorage or system preference
-document.addEventListener("DOMContentLoaded", async () => {
+// --- Theme Toggling ---
+function loadTheme() {
   const savedTheme = localStorage.getItem("theme");
   if (
     savedTheme === "dark" ||
     (!savedTheme && window.matchMedia("(prefers-color-scheme: dark)").matches)
   ) {
     document.body.classList.add("dark-mode");
-    themeIconDropdown.className = "fas fa-sun mr-2";
+    if (themeIconDropdown) {
+      // Null check added
+      themeIconDropdown.className = "fas fa-sun mr-2";
+    }
   } else {
     document.body.classList.remove("dark-mode");
-    themeIconDropdown.className = "fas fa-moon mr-2";
+    if (themeIconDropdown) {
+      // Null check added
+      themeIconDropdown.className = "fas fa-moon mr-2";
+    }
+  }
+}
+
+function toggleTheme() {
+  if (document.body.classList.contains("dark-mode")) {
+    document.body.classList.remove("dark-mode");
+    localStorage.setItem("theme", "light");
+    if (themeIconDropdown) {
+      // Null check added
+      themeIconDropdown.className = "fas fa-moon mr-2";
+    }
+  } else {
+    document.body.classList.add("dark-mode");
+    localStorage.setItem("theme", "dark");
+    if (themeIconDropdown) {
+      // Null check added
+      themeIconDropdown.className = "fas fa-sun mr-2";
+    }
+  }
+}
+
+// --- File Upload Queue and Duplicate Handling ---
+// Moved these event listeners inside DOMContentLoaded to ensure elements are initialized
+// fileUploadInput.addEventListener("change", (event) => {
+//   const files = Array.from(event.target.files);
+//   files.forEach((file) => filesToUploadQueue.push(file));
+//   event.target.value = ""; // Clear input
+//   processNextFileInQueue();
+// });
+
+// uploadButton.addEventListener("click", () => {
+//   fileUploadInput.click();
+// });
+
+async function processNextFileInQueue() {
+  if (isProcessingQueue || filesToUploadQueue.length === 0) {
+    return;
   }
 
-  // Attempt to auto-reconnect using saved credentials
+  isProcessingQueue = true;
+  currentFileBeingProcessed = filesToUploadQueue.shift(); // Get the next file
+  currentFileOriginalName = currentFileBeingProcessed.name;
+  const fileKey = currentPrefix + currentFileOriginalName;
+
+  try {
+    // Check if file already exists
+    await s3
+      .headObject({
+        Bucket: currentBucket,
+        Key: fileKey,
+      })
+      .promise();
+
+    // If headObject succeeds, file exists
+    if (fileNameInModal) fileNameInModal.textContent = currentFileOriginalName;
+    if (newFileNameInputDuplicate)
+      newFileNameInputDuplicate.value = currentFileOriginalName;
+    showModal(duplicateFileModal);
+  } catch (headError) {
+    // If headObject fails with NotFound, then file does not exist, proceed with upload
+    if (headError.code === "NotFound") {
+      await uploadFile(currentFileBeingProcessed, currentFileOriginalName);
+      currentFileBeingProcessed = null; // Clear processed file
+      processNextFileInQueue(); // Process next in queue
+    } else {
+      throw headError; // Re-throw other errors
+    }
+  } finally {
+    isProcessingQueue = false;
+  }
+}
+
+// --- Event Listeners (ensure DOM elements are initialized first) ---
+document.addEventListener("DOMContentLoaded", async () => {
+  initializeDOMElements(); // Initialize all DOM elements here
+
+  // Now, attach event listeners to the elements AFTER they are initialized
+  if (fileUploadInput) {
+    // Add null checks for robustness
+    fileUploadInput.addEventListener("change", (event) => {
+      //
+      const files = Array.from(event.target.files); //
+      files.forEach((file) => filesToUploadQueue.push(file)); //
+      event.target.value = ""; // Clear input
+      processNextFileInQueue(); //
+    });
+  }
+
+  if (uploadButton) {
+    // Add null checks for robustness
+    uploadButton.addEventListener("click", () => {
+      //
+      if (fileUploadInput) {
+        // Ensure fileUploadInput is also not null before clicking
+        fileUploadInput.click(); //
+      }
+    });
+  }
+
+  // Event Listeners for modals
+  if (createNewFolderModal) {
+    if (newFolderButton) {
+      newFolderButton.addEventListener("click", () => {
+        showModal(createNewFolderModal);
+        if (newFolderNameInput) newFolderNameInput.value = ""; // Clear input on open
+        if (newFolderNameInput) newFolderNameInput.focus();
+      });
+    }
+    if (createFolderCancelButton) {
+      createFolderCancelButton.addEventListener("click", () =>
+        hideModal(createNewFolderModal)
+      );
+    }
+    if (createFolderConfirmButton) {
+      createFolderConfirmButton.addEventListener("click", () => {
+        const folderName = newFolderNameInput
+          ? newFolderNameInput.value.trim()
+          : "";
+        if (folderName) {
+          createFolder(folderName);
+        } else {
+          showToast("Folder name cannot be empty.", "error");
+        }
+      });
+    }
+  }
+
+  if (shareLinkModal) {
+    if (closeShareModalButton) {
+      closeShareModalButton.addEventListener("click", () =>
+        hideModal(shareLinkModal)
+      );
+    }
+    if (copyShareLinkButton) {
+      copyShareLinkButton.addEventListener("click", copyShareLink);
+    }
+  }
+
+  // Event Listeners for duplicate file modal actions
+  if (duplicateReplaceButton) {
+    duplicateReplaceButton.addEventListener("click", async () => {
+      console.log("Duplicate file modal: Replace button clicked.");
+      hideModal(duplicateFileModal);
+      if (currentFileBeingProcessed) {
+        await uploadFile(currentFileBeingProcessed, currentFileOriginalName);
+      }
+      currentFileBeingProcessed = null; // Clear processed file
+      processNextFileInQueue(); // Process next in queue
+    });
+  }
+
+  if (duplicateRenameButton) {
+    duplicateRenameButton.addEventListener("click", async () => {
+      console.log("Duplicate file modal: Rename button clicked.");
+      hideModal(duplicateFileModal);
+      const newName = newFileNameInputDuplicate
+        ? newFileNameInputDuplicate.value.trim()
+        : "";
+      if (newName && newName !== currentFileOriginalName) {
+        await uploadFile(currentFileBeingProcessed, newName);
+      } else {
+        showToast(
+          "Invalid new file name or same as original. Skipping upload.",
+          "error"
+        );
+        console.log("Duplicate file modal: Invalid rename, skipping upload.");
+      }
+      processNextFileInQueue();
+    });
+  }
+
+  // Connection button
+  if (connectButton) {
+    connectButton.addEventListener("click", connectToS3);
+  }
+
+  // Search and Filter
+  if (searchButton) {
+    searchButton.addEventListener("click", () =>
+      listFiles(currentPrefix, searchFilesInput.value)
+    );
+  }
+  if (searchFilesInput) {
+    searchFilesInput.addEventListener("keypress", (event) => {
+      if (event.key === "Enter") {
+        listFiles(currentPrefix, searchFilesInput.value);
+      }
+    });
+  }
+
+  if (filterButton) {
+    filterButton.addEventListener("click", (event) => {
+      event.stopPropagation(); // Prevent document click from closing it immediately
+      if (filterDropdown) {
+        filterDropdown.classList.toggle("hidden");
+      }
+    });
+  }
+
+  if (filterOptions) {
+    filterOptions.forEach((option) => {
+      option.addEventListener("click", () => {
+        if (filterButton) {
+          filterButton.querySelector("span").textContent =
+            option.textContent.trim();
+        }
+        filterDropdown.classList.add("hidden");
+        listFiles(currentPrefix, searchFilesInput.value); // Re-list files with new filter
+      });
+    });
+  }
+  // Hide filter dropdown when clicking outside
+  document.addEventListener("click", (event) => {
+    if (
+      filterDropdown &&
+      !filterDropdown.contains(event.target) &&
+      event.target !== filterButton
+    ) {
+      filterDropdown.classList.add("hidden");
+    }
+  });
+
+  // Back button functionality
+  if (backButton) {
+    backButton.addEventListener("click", navigateBack);
+  }
+
+  // Header Account Menu
+  if (accountMenuButton) {
+    accountMenuButton.addEventListener("click", (event) => {
+      event.stopPropagation(); // Prevent click from closing immediately
+      if (accountDropdownMenu) {
+        accountDropdownMenu.classList.toggle("hidden");
+      }
+    });
+  }
+
+  if (disconnectButton) {
+    disconnectButton.addEventListener("click", disconnectFromS3);
+  }
+
+  // Close dropdown when clicking outside
+  document.addEventListener("click", (event) => {
+    if (
+      accountDropdownMenu &&
+      !accountDropdownMenu.contains(event.target) &&
+      event.target !== accountMenuButton
+    ) {
+      accountDropdownMenu.classList.add("hidden");
+    }
+  });
+
+  // Theme Toggle
+  if (themeToggleDropdown) {
+    themeToggleDropdown.addEventListener("click", toggleTheme);
+  }
+
+  // Initial load logic for theme and connection
+  loadTheme(); // Now loadTheme can safely use themeIconDropdown as it's initialized
+
   if (loadCredentials()) {
-    showStatus("Attempting to reconnect using saved credentials...", "info");
-    await connectToS3();
+    //
+    if (connectButton) connectButton.textContent = "Re-connect"; //
+    showToast("Saved credentials found. Attempting to reconnect...", "info"); //
+    // Attempt to auto-reconnect using saved credentials immediately
+    await connectToS3(); //
   } else {
-    showConnectionSection(); // Ensure connection section is visible if no saved credentials
+    // Ensure connection section is visible if no saved credentials found
+    if (connectionSection) connectionSection.classList.remove("hidden"); //
+    if (fileManagerSection) fileManagerSection.classList.add("hidden"); //
+    if (accountIconContainer) accountIconContainer.classList.add("hidden"); // Keep account icon hidden until connected
+    console.log("No saved credentials found, showing connection section."); //
   }
 });
-
-function showConnectionSection() {
-  connectionSection.classList.remove("hidden");
-  fileManagerSection.classList.add("hidden");
-  accountIconContainer.classList.add("hidden");
-  syncStatusButton.title = "Not connected";
-  backButton.disabled = true; // Ensure back button is disabled when not connected
-}
