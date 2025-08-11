@@ -1,5 +1,20 @@
-# React + Vite
+# EPIC-Drive
 
+This is the same project of EPIC-Drive but build with diffrently new tech stack becasuse this is easier to handle.
+
+# Project Stauts
+Everything is fine as for now, the majority things has been added and only a few features are pending.
+I will list the features that are yet to be implement and they will be implemnted in the next update
+Chanlogue
+* Implemnet sort features.
+* Making it responsive site for mobile also
+* Adding edit/ rename option.
+* Duplicate Upload detection
+* Adding select, multi-select features.
+* Implent Bulk operations
+
+
+---
 This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
 
 Currently, two official plugins are available:
